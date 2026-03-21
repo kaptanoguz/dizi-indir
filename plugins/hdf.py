@@ -178,9 +178,15 @@ class HDFPlugin(BaseCrawler):
                 self.download_poster(info['poster'], os.path.join(save_dir, "poster.jpg"))
             
             # 4. Download with yt-dlp
-            # IMPORTANT: The fragment servers (srv.*.cfd) ONLY accept the root FastPlay URL as Referer.
-            fixed_referer = "https://fastplay.mom/"
-            print(f"HDF İndirme başlatılıyor... (yt-dlp)")
+            # NEW: Determine Referer dynamically based on the player URL
+            player_domain = video_url_orig.split('/')[2] if '://' in video_url_orig else 'hdfilmcehennemi.now'
+            fixed_referer = f"https://{player_domain}/"
+            
+            # Special case for FastPlay fragments
+            if 'fastplay.mom' in video_url_orig:
+                fixed_referer = "https://fastplay.mom/"
+            
+            print(f"HDF İndirme başlatılıyor... (yt-dlp) | Referer: {fixed_referer}")
             
             ydl_opts = {
                 'outtmpl': output_path,
@@ -189,7 +195,7 @@ class HDFPlugin(BaseCrawler):
                 'http_headers': {
                     'User-Agent': self.session.headers.get('User-Agent'),
                     'Referer': fixed_referer,
-                    'Origin': 'https://fastplay.mom',
+                    'Origin': f"https://{player_domain}",
                     'Accept': '*/*',
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                 },
