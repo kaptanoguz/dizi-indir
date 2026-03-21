@@ -163,13 +163,20 @@ class HDFPlugin(BaseCrawler):
             if info.get('poster'):
                 self.download_poster(info['poster'], os.path.join(save_dir, "poster.jpg"))
             
+            # 4. Download with yt-dlp
+            # The referer for the manifest must be the iframe URL, not the movie page
+            iframe_url = ajax_data['data']
+            
             ydl_opts = {
                 'outtmpl': output_path,
                 'quiet': True,
                 'no_warnings': True,
                 'http_headers': {
-                    'Referer': url,
-                    'Origin': 'https://fastplay.mom'
+                    'User-Agent': self.session.headers.get('User-Agent'),
+                    'Referer': iframe_url,
+                    'Origin': 'https://fastplay.mom',
+                    'Accept': '*/*',
+                    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                 },
                 'progress_hooks': [lambda d: self.progress_hook(d, download_id)],
                 'retries': 10,
@@ -180,6 +187,8 @@ class HDFPlugin(BaseCrawler):
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Add hls_prefer_native to avoid ffmpeg issues if possible
+                ydl.params['hls_prefer_native'] = True
                 ydl.download([video_url])
             
             return True
