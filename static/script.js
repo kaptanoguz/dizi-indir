@@ -195,9 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- VLC ICON SVG ---
-    const vlcIconSvg = `<svg class="vlc-icon-svg" viewBox="0 0 512 512" width="18" height="18" fill="white" style="margin-right: 4px;">
-        <path d="M480 432h-40.4L337.5 137.3c-4-10.8-14.3-17.3-25.5-17.3h-100c-11.2 0-21.5 6.5-25.5 17.3L84.4 432H44c-6.6 0-12 5.4-12 12v16c0 6.6 5.4 12 12 12h424c6.6 0 12-5.4 12-12v-16c0-6.6-5.4-12-12-12zm-316.5 0l33.3-100h118.4l33.3 100H163.5zm165.2-132H183.3l16.7-50h112l16.7 50zm-100-82l16.7-50h21.4l16.7 50h-54.8zM256 0c-14.7 0-26.7 12-26.7 26.7v32c0 14.7 12 26.7 26.7 26.7s26.7-12 26.7-26.7v-32C282.7 12 270.7 0 256 0z"/>
+    // --- VLC ICON SVG (High Quality Cone) ---
+    const vlcIconSvg = `<svg class="vlc-icon-svg" viewBox="0 0 512 512" width="20" height="20" fill="currentColor">
+        <path d="M464 448H352.44L281.82 86.63C278.36 68.86 262.77 56 244.64 56h-1.28c-18.13 0-33.72 12.86-37.18 30.63L135.56 448H48c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h416c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16zm-308.83-32l25.6-128h152.06l25.6 128H155.17zm116.59-192h-67.52l12.8-64h41.92l12.8 64z"/>
     </svg>`;
 
     // --- VLC INTEGRATION ---

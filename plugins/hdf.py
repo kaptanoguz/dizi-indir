@@ -65,32 +65,60 @@ class HDFPlugin(BaseCrawler):
         url = info['url']
         try:
             r = self.session.get(url, timeout=30)
+            soup = BeautifulSoup(r.text, 'html.parser')
+
+            # Find FastPlay tab data
+            tab = soup.find('a', attrs={'data-player-name': 'FastPlay'})
+            if not tab:
+                # Fallback to any available player if FastPlay is missing
+                tab = soup.find('a', class_='options2')
             
-            # HDF AJAX loading logic:
-            # They use data-post-id and admin-ajax.php
-            # But usually FastPlay manifest can be constructed or found in DOM scripts
+            if not tab:
+                print("HDF Oynatıcı sekmesi bulunamadı.")
+                return False
+
+            post_id = tab.get('data-post-id')
+            player_name = tab.get('data-player-name')
+            part_key = tab.get('data-part-key')
             
-            # Alternative: construction manifest from data-id if found
-            player_match = re.search(r'data-id="(.*?)"', r.text)
-            if not player_match:
-                # Try finding in scripts
-                id_match = re.search(r'var\s+post_id\s*=\s*"?(\d+)"?', r.text)
-                if id_match:
-                    video_id = id_match.group(1)
-                else:
-                    print("HDF Player ID bulunamadı.")
-                    return False
-            else:
-                video_id = player_match.group(1)
+            # The AJAX endpoint
+            ajax_url = "https://www.hdfilmcehennemi.now/wp-admin/admin-ajax.php"
             
-            # The subagent confirmed fastplay.mom/manifests/{ID}/master.txt pattern 
-            # OR we might need to hit admin-ajax.php.
-            # Let's try the direct manifest first as it's common for these players.
-            video_url = f"https://fastplay.mom/manifests/{video_id}/master.txt"
+            # Form data for the AJAX request
+            # Note: Sometimes it requires a nonce, let's see if we can get it from the page
+            # Usually HDF uses a specific key or looks for it in scripts
+            payload = {
+                'action': 'get_video_url',
+                'post_id': post_id,
+                'player_name': player_name,
+                'part_key': part_key
+            }
+
+            headers = {
+                'Referer': url,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Origin': 'https://www.hdfilmcehennemi.now'
+            }
+
+            r_ajax = self.session.post(ajax_url, data=payload, headers=headers, timeout=20)
+            ajax_data = r_ajax.json()
+            
+            if not ajax_data.get('success') or not ajax_data.get('data'):
+                print(f"HDF AJAX hatası: {ajax_data}")
+                return False
+                
+            video_url = ajax_data['data'] # This is the iframe URL (e.g., fastplay.mom/video/...)
+            
+            # Convert iframe URL to manifest URL if it's FastPlay
+            if 'fastplay.mom' in video_url:
+                video_id = video_url.split('/')[-1]
+                video_url = f"https://fastplay.mom/manifests/{video_id}/master.txt"
             
             # Save logic
             show_name = info.get('show', 'Film')
-            if show_name == 'Film':
+            is_movie = show_name == 'Film' or info.get('season') == '-'
+            
+            if is_movie:
                 save_dir = os.path.join('downloads', 'Filmler')
                 filename = f"{self.sanitize_filename(info['title'])}.mp4"
             else:
