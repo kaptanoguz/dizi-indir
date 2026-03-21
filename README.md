@@ -1,41 +1,38 @@
-# Dizibox Downloader
+# Dizibox Premium Downloader GUI
 
-Tired of dealing with Dizibox's amateur protections? This tool just gets you the file directly. It's designed to cut through their simple layers of protection.
+Dizibox Downloader'ın komut satırı aracını, modern ve şık bir Web arayüzüne dönüştürülmüş halidir. Bu uygulama ile dizileri tarayıcı üzerinden kolayca indirebilir, indirme ilerlemesini takip edebilir ve kütüphanenizdeki dizileri doğrudan tarayıcıda izleyebilirsiniz.
 
-### The Security Layers It Handles
+### 🌟 Premium Özellikler
 
-The obstacles they use are basic. Here's what this tool automates for you:
+*   **Modern Web Arayüzü:** Koyu tema, cam morfolojisi (glassmorphism) ve neon vurgularla şık bir tasarım.
+*   **Afiş Desteği:** İndirilen dizilerin afişleri otomatik olarak getirilir ve kütüphaneniz bir poster galerisine dönüşür.
+*   **Gerçek Zamanlı İlerleme:** Socket.IO senkronizasyonu ile indirme yüzdesi, hızı ve kalan süreyi anlık takip edin.
+*   **10 Kat Hız (Paralel İndirme):** HLS/Fragment tabanlı videoları 10 kanallı paralel indirme desteği ile saniyeler içinde indirin.
+*   **Dahili Video Oynatıcı:** İndirdiğiniz bölümleri başka bir programa ihtiyaç duymadan tarayıcıda izleyin.
+*   **Kalıcı Kütüphane:** `db.json` sayesinde indirme geçmişiniz her zaman güvende.
 
-*   **Newbie Trap (`debugger;`):** The script isn't browser-based, so we dont even give a damn about this.
-*   **Nested iframes:** Instead of manually clicking through multiple `iframe`s, the script passes the entire chain automatically.
-*   **Referer Check:** It sends the correct referer header, bypassing the check, simple.
-*   **AES Encryption:** They "encrypt" the final video with basic AES and thankfully provide the key. The script simply uses it to decrypt the file.
+### 🚀 Kurulum
 
-### What It Does
-
-*   **Bypasses Protections:** Handles all the obstacles listed above in seconds. You just provide the link.
-*   **Single or Season Download:** Give it a single episode link, or add `--sezon` to grab the entire season.
-*   **Automatic Organization:** Finds the series name, season, and episode number on its own. Creates folders like `The-Series-Name Season-1` and names files neatly like `01. Episode - Episode Name.mp4`.
-*   **Skips Duplicates:** It detects if you've already downloaded an episode and skips it to save time.
-
-### Installation
-
-You have Python. Just install these:
-
-```bash
-pip install requests beautifulsoup4 pycryptodome tqdm yt-dlp
-```
-
-### Usage
-
-*   **Single Episode:**
+1.  **Bağımlılıkları Yükleyin:**
     ```bash
-    python dizibox.py "https://www.dizibox.net/series-name/season-1-episode-1"
+    pip install flask flask-socketio eventlet requests beautifulsoup4 pycryptodome tqdm yt-dlp
     ```
-
-*   **Full Season:**
+2.  **Uygulamayı Başlatın:**
     ```bash
-    python dizibox.py "https://www.dizibox.net/series-name/season-1-episode-5" --sezon
+    python app.py
     ```
+3.  **Tarayıcıdan Erişin:**
+    `http://localhost:5005` adresine gidin.
 
-That's it. Download and watch.
+### 🛠️ Teknolojiler
+
+*   **Backend:** Python 3.12+, Flask, Flask-SocketIO (Eventlet)
+*   **Frontend:** Vanilla JS, CSS (Glassmorphism), FontAwesome
+*   **Motor:** yt-dlp, BeautifulSoup4
+
+### Notlar
+- İndirmelerin hızlı ve stabil olması için sisteminizde `ffmpeg` yüklü olması önerilir.
+- ANSI renk kodları arayüzde temizlenerek tertemiz bir metin sunulur.
+
+---
+Geliştirici: **trakir** | Premium GUI & Optimizasyon: **Antigravity AI**
