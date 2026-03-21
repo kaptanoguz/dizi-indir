@@ -195,9 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- VLC ICON SVG (High Quality Cone) ---
-    const vlcIconSvg = `<svg class="vlc-icon-svg" viewBox="0 0 512 512" width="20" height="20" fill="currentColor">
-        <path d="M464 448H352.44L281.82 86.63C278.36 68.86 262.77 56 244.64 56h-1.28c-18.13 0-33.72 12.86-37.18 30.63L135.56 448H48c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h416c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16zm-308.83-32l25.6-128h152.06l25.6 128H155.17zm116.59-192h-67.52l12.8-64h41.92l12.8 64z"/>
+    // --- VLC ICON SVG (Premium Realistic Cone) ---
+    const vlcIconSvg = `<svg class="vlc-icon-svg" viewBox="0 0 512 512" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#e67e22" d="M464 448H352.4L281.8 86.6c-3.5-17.8-19.1-30.6-37.2-30.6h-1.3c-18.1 0-33.7 12.8-37.2 30.6L135.5 448H48c-8.8 0-16 7.2-16 16v16c0 8.8 7.2 16 16 16h416c8.8 0 16-7.2 16-16v-16c0-8.8-7.2-16-16-16z"/>
+        <path fill="#fff" d="M155.2 416l25.6-128h152l25.6 128H155.2z"/>
+        <path fill="#fff" d="M211.8 224h88.4l12.8-64h-114l12.8 64z"/>
     </svg>`;
 
     // --- VLC INTEGRATION ---

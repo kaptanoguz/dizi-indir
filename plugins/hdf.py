@@ -67,7 +67,27 @@ class HDFPlugin(BaseCrawler):
             r = self.session.get(url, timeout=30)
             soup = BeautifulSoup(r.text, 'html.parser')
 
-            # Find FastPlay tab data
+            # 1. Scrape the nonce from the script
+            # Example: window.videoAjax = {"nonce":"e1b94ba64b","url":"..."};
+            nonce = None
+            nonce_match = re.search(r'videoAjax\s*=\s*\{.*?"nonce":"([^"]+)"', r.text)
+            if nonce_match:
+                nonce = nonce_match.group(1)
+            
+            if not nonce:
+                # Try finding in all script tags if direct regex fails
+                for script in soup.find_all('script'):
+                    if script.string and 'videoAjax' in script.string:
+                        m = re.search(r'"nonce":"([^"]+)"', script.string)
+                        if m:
+                            nonce = m.group(1)
+                            break
+            
+            if not nonce:
+                print("HDF Nonce bulunamadı.")
+                # We'll try without it, but it will likely fail
+            
+            # 2. Find FastPlay tab data
             tab = soup.find('a', attrs={'data-player-name': 'FastPlay'})
             if not tab:
                 # Fallback to any available player if FastPlay is missing
@@ -85,10 +105,9 @@ class HDFPlugin(BaseCrawler):
             ajax_url = "https://www.hdfilmcehennemi.now/wp-admin/admin-ajax.php"
             
             # Form data for the AJAX request
-            # Note: Sometimes it requires a nonce, let's see if we can get it from the page
-            # Usually HDF uses a specific key or looks for it in scripts
             payload = {
                 'action': 'get_video_url',
+                'nonce': nonce,
                 'post_id': post_id,
                 'player_name': player_name,
                 'part_key': part_key
