@@ -14,16 +14,18 @@ class HDFPlugin(BaseCrawler):
             r = self.session.get(url, timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
             
-            # Title
+            # Title - Prioritize og:title as it's usually cleaner
             title = "Bilinmiyor"
-            # Try h1 first, then og:title
-            title_tag = soup.find('h1')
-            if title_tag:
-                title = title_tag.text.strip()
+            meta_title = soup.find('meta', property='og:title')
+            if meta_title:
+                title = meta_title.get('content')
             else:
-                meta_title = soup.find('meta', property='og:title')
-                if meta_title:
-                    title = meta_title.get('content')
+                title_tag = soup.find('h1')
+                if title_tag:
+                    title = title_tag.text.strip()
+            
+            # Clean title from common suffixes
+            title = title.split('|')[0].replace('izle', '').strip()
             
             # Poster
             poster_url = "N/A"
@@ -139,13 +141,18 @@ class HDFPlugin(BaseCrawler):
                 print(f"HDF AJAX hatası (Başarısız): {ajax_data}")
                 return False
                 
-            video_url_orig = ajax_data['data']
+            data_val = ajax_data['data']
+            if isinstance(data_val, dict) and 'url' in data_val:
+                video_url_orig = data_val['url']
+            else:
+                video_url_orig = str(data_val)
+                
             print(f"HDF AJAX Başarılı! Oynatıcı URL: {video_url_orig}")
             
             # Convert iframe URL to manifest URL if it's FastPlay
             video_url = video_url_orig
             if 'fastplay.mom' in video_url:
-                video_id = video_url.split('/')[-1]
+                video_id = video_url.rstrip('/').split('/')[-1]
                 video_url = f"https://fastplay.mom/manifests/{video_id}/master.txt"
                 print(f"HDF FastPlay Manifest URL oluşturuldu: {video_url}")
             
