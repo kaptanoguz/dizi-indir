@@ -74,29 +74,30 @@ class HDFPlugin(BaseCrawler):
             r = self.session.get(url, timeout=30)
             soup = BeautifulSoup(r.text, 'html.parser')
 
-            # 1. Scrape the nonce from the script with DOTALL to handle newlines
+            # 1. Scrape the nonce using a very flexible regex
+            # We look for something like nonce: 'e1b94ba64b' or "nonce":"e1b94ba64b"
             nonce = None
-            # Look for window.videoAjax = { ... nonce: '...' }
-            nonce_match = re.search(r'videoAjax\s*=\s*\{.*?"?nonce"?:\s*\'([^\']+)\'', r.text, re.DOTALL)
-            if not nonce_match:
-                # Try single quotes for the key or other variations
-                nonce_match = re.search(r'nonce\s*:\s*\'([^\']+)\'', r.text)
             
-            if nonce_match:
-                nonce = nonce_match.group(1)
+            # Pattern 1: Specifically near videoAjax (broad search)
+            # Find the videoAjax block first
+            video_ajax_block = re.search(r'videoAjax\s*=\s*\{([^}]+)\}', r.text, re.DOTALL)
+            if video_ajax_block:
+                block_content = video_ajax_block.group(1)
+                m = re.search(r'nonce\s*:\s*[\'"]([a-f0-9]{10,12})[\'"]', block_content)
+                if m:
+                    nonce = m.group(1)
+            
+            # Pattern 2: Global search for the first 10-char hex nonce in a script that looks like it's for video
+            if not nonce:
+                nonce_matches = re.findall(r'nonce\s*:\s*[\'"]([a-f0-9]{10,12})[\'"]', r.text)
+                if nonce_matches:
+                    # In HDF, the video nonce is usually one of the first few
+                    nonce = nonce_matches[0]
             
             if not nonce:
-                # Last resort: search for any 10-char alphanumeric string assigned to a nonce key in scripts
-                for script in soup.find_all('script'):
-                    if script.string and 'videoAjax' in script.string:
-                        m = re.search(r'nonce\s*:\s*\'([^\']+)\'', script.string)
-                        if m:
-                            nonce = m.group(1)
-                            break
-            
-            if not nonce:
-                print("HDF Nonce bulunamadı. Sayfa içeriği aranıyor...")
-                # Debug: print a portion of r.text to logs if possible
+                print("HDF Nonce bulunamadı! Sayfa içeriği analiz edilemedi.")
+            else:
+                print(f"HDF Nonce başarıyla yakalandı: {nonce}")
             
             # 2. Find FastPlay tab data
             tab = soup.find('a', attrs={'data-player-name': 'FastPlay'})
