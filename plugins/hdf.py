@@ -131,19 +131,23 @@ class HDFPlugin(BaseCrawler):
                 'Origin': 'https://www.hdfilmcehennemi.now'
             }
 
+            print(f"HDF AJAX isteği gönderiliyor... (post_id: {post_id}, nonce: {nonce})")
             r_ajax = self.session.post(ajax_url, data=payload, headers=headers, timeout=20)
             ajax_data = r_ajax.json()
             
             if not ajax_data.get('success') or not ajax_data.get('data'):
-                print(f"HDF AJAX hatası: {ajax_data}")
+                print(f"HDF AJAX hatası (Başarısız): {ajax_data}")
                 return False
                 
-            video_url = ajax_data['data'] # This is the iframe URL (e.g., fastplay.mom/video/...)
+            video_url_orig = ajax_data['data']
+            print(f"HDF AJAX Başarılı! Oynatıcı URL: {video_url_orig}")
             
             # Convert iframe URL to manifest URL if it's FastPlay
+            video_url = video_url_orig
             if 'fastplay.mom' in video_url:
                 video_id = video_url.split('/')[-1]
                 video_url = f"https://fastplay.mom/manifests/{video_id}/master.txt"
+                print(f"HDF FastPlay Manifest URL oluşturuldu: {video_url}")
             
             # Save logic
             show_name = info.get('show', 'Film')
@@ -158,6 +162,7 @@ class HDFPlugin(BaseCrawler):
             
             if not os.path.exists(save_dir): os.makedirs(save_dir)
             output_path = os.path.join(save_dir, filename)
+            print(f"HDF Kayıt yolu: {output_path}")
             
             # Poster
             if info.get('poster'):
@@ -165,13 +170,13 @@ class HDFPlugin(BaseCrawler):
             
             # 4. Download with yt-dlp
             # IMPORTANT: The fragment servers (srv.*.cfd) ONLY accept the root FastPlay URL as Referer.
-            # Using the full iframe URL results in 404 for fragments.
             fixed_referer = "https://fastplay.mom/"
+            print(f"HDF İndirme başlatılıyor... (yt-dlp)")
             
             ydl_opts = {
                 'outtmpl': output_path,
-                'quiet': True,
-                'no_warnings': True,
+                'quiet': False, # Detayları görelim
+                'no_warnings': False,
                 'http_headers': {
                     'User-Agent': self.session.headers.get('User-Agent'),
                     'Referer': fixed_referer,
@@ -180,17 +185,20 @@ class HDFPlugin(BaseCrawler):
                     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
                 },
                 'progress_hooks': [lambda d: self.progress_hook(d, download_id)],
-                'retries': 10,
+                'retries': 15,
+                'fragment_retries': 15,
                 'concurrent_fragment_downloads': 10,
                 'nocheckcertificate': True,
                 'ignoreerrors': True,
-                'external_downloader_args': ['-loglevel', 'panic', '-hide_banner'],
+                'external_downloader_args': ['-loglevel', 'info'],
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Add hls_prefer_native to ensure it uses the provided headers for fragments
                 ydl.params['hls_prefer_native'] = True
                 ydl.download([video_url])
+            
+            print(f"HDF İndirme işlemi tamamlandı (veya durdu).")
+            return True
             
             return True
         except Exception as e:
