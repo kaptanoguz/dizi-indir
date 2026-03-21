@@ -63,29 +63,40 @@ class HDFPlugin(BaseCrawler):
 
     def download(self, info, download_id):
         url = info['url']
+        # Use a browser-like User-Agent to avoid simplified HTML
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        })
+        
         try:
             r = self.session.get(url, timeout=30)
             soup = BeautifulSoup(r.text, 'html.parser')
 
-            # 1. Scrape the nonce from the script
-            # Example: window.videoAjax = {"nonce":"e1b94ba64b","url":"..."};
+            # 1. Scrape the nonce from the script with DOTALL to handle newlines
             nonce = None
-            nonce_match = re.search(r'videoAjax\s*=\s*\{.*?"nonce":"([^"]+)"', r.text)
+            # Look for window.videoAjax = { ... nonce: '...' }
+            nonce_match = re.search(r'videoAjax\s*=\s*\{.*?"?nonce"?:\s*\'([^\']+)\'', r.text, re.DOTALL)
+            if not nonce_match:
+                # Try single quotes for the key or other variations
+                nonce_match = re.search(r'nonce\s*:\s*\'([^\']+)\'', r.text)
+            
             if nonce_match:
                 nonce = nonce_match.group(1)
             
             if not nonce:
-                # Try finding in all script tags if direct regex fails
+                # Last resort: search for any 10-char alphanumeric string assigned to a nonce key in scripts
                 for script in soup.find_all('script'):
                     if script.string and 'videoAjax' in script.string:
-                        m = re.search(r'"nonce":"([^"]+)"', script.string)
+                        m = re.search(r'nonce\s*:\s*\'([^\']+)\'', script.string)
                         if m:
                             nonce = m.group(1)
                             break
             
             if not nonce:
-                print("HDF Nonce bulunamadı.")
-                # We'll try without it, but it will likely fail
+                print("HDF Nonce bulunamadı. Sayfa içeriği aranıyor...")
+                # Debug: print a portion of r.text to logs if possible
             
             # 2. Find FastPlay tab data
             tab = soup.find('a', attrs={'data-player-name': 'FastPlay'})
