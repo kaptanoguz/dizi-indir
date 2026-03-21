@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from hashlib import md5
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
-from .base_crawler import BaseCrawler
+from plugins.base_crawler import BaseCrawler
 
 class DiziboxPlugin(BaseCrawler):
     def __init__(self, socketio=None):

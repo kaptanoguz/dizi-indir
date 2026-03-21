@@ -3,7 +3,7 @@ import re
 import requests
 import yt_dlp
 from bs4 import BeautifulSoup
-from .base_crawler import BaseCrawler
+from plugins.base_crawler import BaseCrawler
 
 class HDFPlugin(BaseCrawler):
     def __init__(self, socketio=None):

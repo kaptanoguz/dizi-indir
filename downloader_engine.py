@@ -1,5 +1,5 @@
-from .plugins.dizibox import DiziboxPlugin
-from .plugins.hdf import HDFPlugin
+from plugins.dizibox import DiziboxPlugin
+from plugins.hdf import HDFPlugin
 
 class DiziboxEngine:
     def __init__(self, socketio=None):
