@@ -1,0 +1,21 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Application Data
+downloads/
+db.json
+
+# IDE
+.vscode/
+.idea/
+
+# Flask
+instance/
+.webassets-cache

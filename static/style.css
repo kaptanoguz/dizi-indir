@@ -1,0 +1,527 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary: #0084ff;
+    --accent: #5ab2ff;
+    --bg-dark: #0f111a;
+    --sidebar-bg: #1a1e2e;
+    --card-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --transition: 0.3s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: var(--bg-dark);
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(0, 132, 255, 0.05) 0%, transparent 80%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background: var(--sidebar-bg);
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    z-index: 10;
+    border-right: 1px solid var(--glass-border);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.circle-logo {
+    font-size: 2rem;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.nav-links li {
+    padding: 12px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: rgba(255,255,255,0.6);
+    transition: var(--transition);
+}
+
+.nav-links li:hover {
+    background: rgba(255,255,255,0.03);
+    color: #fff;
+}
+
+.nav-links li.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0, 132, 255, 0.4);
+}
+
+.badge {
+    margin-left: auto;
+    background: #ff4757;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+/* Content Area */
+.content {
+    flex: 1;
+    padding: 2.5rem 3.5rem;
+    overflow-y: auto;
+    z-index: 5;
+    position: relative;
+    background: #0b0d14;
+}
+
+.view {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.view.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.header h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.search-bar {
+    background: var(--card-bg);
+    padding: 10px 18px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--glass-border);
+    width: 320px;
+}
+
+.search-bar input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    outline: none;
+    width: 100%;
+}
+
+/* Library Grid */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 30px;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+    border: 1px solid var(--glass-border);
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.card:hover {
+    transform: translateY(-15px) scale(1.05);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 20px rgba(0, 132, 255, 0.2);
+    border-color: var(--primary);
+}
+
+.card-img {
+    height: 340px;
+    background: #1a1e2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.card-img i {
+    font-size: 3.5rem;
+    opacity: 0.15;
+}
+
+.card-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: 20px;
+    opacity: 0;
+    transition: 0.3s;
+}
+
+.card:hover .card-overlay {
+    opacity: 1;
+}
+
+.btn-play-series {
+    width: 45px;
+    height: 45px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 132, 255, 0.4);
+}
+
+.card-info {
+    padding: 16px;
+}
+
+.card-info h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+.card-info p {
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+/* Add UI */
+.add-container {
+    max-width: 700px;
+    margin: 4rem auto;
+    text-align: center;
+}
+
+.add-container h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+.add-container p { color: rgba(255,255,255,0.5); margin-bottom: 2.5rem; }
+
+.input-group {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    padding: 8px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2rem;
+}
+
+#dl-url {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 12px 18px;
+    color: #fff;
+    font-size: 1rem;
+    outline: none;
+}
+
+.mode-switch {
+    display: flex;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 4px;
+}
+
+.mode-switch button {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: 0.2s;
+}
+
+.mode-switch button.active {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+.glow-button {
+    background: linear-gradient(45deg, var(--primary), var(--accent));
+    border: none;
+    color: #fff;
+    padding: 16px 40px;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(0, 132, 255, 0.3);
+    transition: 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.glow-button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 12px 35px rgba(0, 132, 255, 0.5);
+}
+
+/* Download List */
+.download-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dl-card {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.dl-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 132, 255, 0.1);
+    color: var(--primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.dl-main {
+    flex: 1;
+}
+
+.dl-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.dl-info h4 { font-weight: 500; font-size: 0.95rem; }
+.dl-info span { font-size: 0.85rem; opacity: 0.6; }
+
+.progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(0, 132, 255, 0.5);
+}
+
+.progress-fill.pulse {
+    animation: pulse 2s infinite ease-in-out;
+    background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+    background-size: 200% 100%;
+}
+
+@keyframes pulse {
+    0% { background-position: 200% 0; opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { background-position: -200% 0; opacity: 0.6; }
+}
+
+.dl-meta {
+    margin-top: 8px;
+    display: flex;
+    gap: 20px;
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+/* Modals */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active { display: flex; }
+
+.modal-content {
+    background: #151921;
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 1000px;
+    position: relative;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+}
+
+.modal-content.glass {
+    background: rgba(21, 25, 33, 0.8);
+    backdrop-filter: blur(20px);
+}
+
+.close-modal, .close-modal-ep {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    font-size: 2rem;
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+    z-index: 110;
+}
+
+.close-modal:hover { color: #fff; }
+
+.player-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+}
+
+#video-player {
+    width: 100%;
+    height: 100%;
+    border-radius: 24px 24px 0 0;
+}
+
+.player-info {
+    padding: 25px 35px;
+}
+
+.player-info h3 { font-size: 1.4rem; margin-bottom: 5px; }
+.player-info p { opacity: 0.5; }
+
+/* Episodes List UI */
+.episodes-view {
+    padding: 35px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.episodes-header {
+    margin-bottom: 25px;
+}
+
+.ep-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ep-row {
+    background: rgba(255,255,255,0.03);
+    padding: 16px 24px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+    border: 1px solid transparent;
+}
+
+.ep-row:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: var(--glass-border);
+}
+
+.ep-num {
+    background: rgba(0,132,255,0.1);
+    color: var(--primary);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ep-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.ep-play {
+    opacity: 0;
+    transition: 0.2s;
+    color: var(--primary);
+}
+
+.ep-row:hover .ep-play {
+    opacity: 1;
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }

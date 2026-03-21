@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiziBOX - Home Theater</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-play-circle circle-logo"></i>
+            <span>DiziBOX</span>
+        </div>
+        <ul class="nav-links">
+            <li class="active" data-view="library"><i class="fas fa-film"></i> Kütüphane</li>
+            <li data-view="downloads"><i class="fas fa-download"></i> İndirilenler <span id="dl-count" class="badge">0</span></li>
+            <li data-view="add"><i class="fas fa-plus-circle"></i> Yeni Dizi Ekle</li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        <!-- Add View -->
+        <section id="view-add" class="view">
+            <div class="add-container">
+                <h1>Yeni Dizi İndir</h1>
+                <p>İndirmek istediğiniz Dizibox bölüm veya sezon linkini buraya yapıştırın.</p>
+                <div class="input-group">
+                    <input type="text" id="dl-url" placeholder="https://www.dizibox.live/...">
+                    <div class="mode-switch">
+                        <button class="active" data-mode="single">Tek Bölüm</button>
+                        <button data-mode="season">Tüm Sezon</button>
+                    </div>
+                </div>
+                <button id="btn-start-dl" class="glow-button"><i class="fas fa-magic"></i> Analiz Et ve Başlat</button>
+            </div>
+        </section>
+
+        <!-- Library View -->
+        <section id="view-library" class="view active">
+            <div class="header">
+                <h2>İndirilen Diziler</h2>
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Kütüphanede ara...">
+                </div>
+            </div>
+            <div id="library-grid" class="grid">
+                <!-- Series Cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- Active Downloads View -->
+        <section id="view-downloads" class="view">
+            <div class="header">
+                <h2>Aktif İndirmeler</h2>
+            </div>
+            <div id="dl-list" class="download-list">
+                <!-- Active download cards will be injected here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal for Video Player -->
+    <div id="player-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div class="player-container">
+                <video id="video-player" controls preload="auto"></video>
+            </div>
+            <div class="player-info">
+                <h3 id="player-title">Bölüm Adı</h3>
+                <p id="player-subtitle">Dizi / Sezon</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Episodes List -->
+    <div id="episodes-modal" class="modal">
+        <div class="modal-content glass">
+            <span class="close-modal-ep">&times;</span>
+            <div class="episodes-view">
+                <div class="episodes-header">
+                    <h2 id="ep-show-name">Dizi Adı</h2>
+                </div>
+                <div id="episodes-list" class="ep-grid">
+                    <!-- Episodes of selected show -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
