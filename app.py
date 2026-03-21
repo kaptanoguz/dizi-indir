@@ -60,14 +60,34 @@ def get_library():
             if os.path.exists(os.path.join(full_path, "poster.jpg")):
                 poster_url = f"/video/{show_dir}/poster.jpg"
                 
-            for ep_file in sorted(os.listdir(full_path)):
-                if ep_file.endswith('.mp4'):
-                    ep_path = os.path.join(show_dir, ep_file)
+            for item in sorted(os.listdir(full_path)):
+                item_path = os.path.join(full_path, item)
+                
+                # 1. Direct mp4 processing (Series / older movies)
+                if os.path.isfile(item_path) and item.endswith('.mp4'):
+                    ep_path = os.path.join(show_dir, item)
                     episodes.append({
-                        'name': ep_file,
+                        'name': item.replace('.mp4', ''),
                         'path': ep_path,
                         'url': f'/video/{ep_path}'
                     })
+                
+                # 2. Sub-directory processing (New movie structure)
+                elif os.path.isdir(item_path):
+                    for sub_item in sorted(os.listdir(item_path)):
+                        if sub_item.endswith('.mp4'):
+                            ep_path = os.path.join(show_dir, item, sub_item)
+                            
+                            # Fallback poster from movie sub-directory
+                            if not poster_url and os.path.exists(os.path.join(item_path, "poster.jpg")):
+                                poster_url = f"/video/{show_dir}/{item}/poster.jpg"
+                                
+                            episodes.append({
+                                'name': item, # Show folder name instead of file
+                                'path': ep_path,
+                                'url': f'/video/{ep_path}'
+                            })
+                            
             if episodes:
                 shows.append({
                     'name': show_dir,
