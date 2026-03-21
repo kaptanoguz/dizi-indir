@@ -213,16 +213,39 @@ class HDFPlugin(BaseCrawler):
             elif 'setplay.shop' in video_url or 'index.php' in video_url:
                 self._log_and_emit(download_id, f"SetPlay/Ara Oynatıcı algılandı, sayfa çözümleniyor: {video_url}")
                 try:
-                    # Oynatıcı iframe sayfasını kendimiz indirelim (yt-dlp takılmasın)
+                    import json
                     player_r = self.session.get(video_url, headers={'Referer': url}, timeout=15)
-                    # Sayfa içindeki file: "..." veya src: "..." bilgisini bulalım
-                    match = re.search(r'(?:file|src)\s*:\s*[\'"](https?://[^\'"]+)[\'"]', player_r.text)
+                    # SetPlay FirePlayer JSON konfigürasyonunu yakala
+                    match = re.search(r'FirePlayer\([^,]+,\s*(\{.*?\})\s*,\s*(?:false|true)\);', player_r.text, re.DOTALL)
                     if match:
-                        video_url = match.group(1)
-                        # yt-dlp'nin .txt engeline takılmamak için URL sonuna query ekleyelim
-                        if video_url.endswith('.txt'):
-                            video_url += '#.m3u8'
-                        self._log_and_emit(download_id, f"Ara oynatıcıdan Manifest URL çıkarıldı: {video_url}")
+                        data = json.loads(match.group(1))
+                        video_url_path = data.get('videoUrl', '')
+                        video_server = str(data.get('videoServer', ''))
+                        host_list = data.get('hostList', {})
+                        
+                        domain_list = host_list.get(video_server, [])
+                        if domain_list and video_url_path:
+                            # İlk aktif domaini seç
+                            domain = domain_list[0]
+                            # Path genellikle '\/cdn\/hls\/...' şeklinde başlar, temizle
+                            video_url_path = video_url_path.replace('\\/', '/')
+                            video_url = f"https://{domain}{video_url_path}#.m3u8"
+                            self._log_and_emit(download_id, f"SetPlay şifresi kırıldı. Gerçek Manifest URL: {video_url}")
+                        else:
+                            # JSON çözülemezse genel deneme
+                            m_file = re.search(r'(?:file|src)\s*:\s*[\'"](https?://[^\'"]+)[\'"]', player_r.text)
+                            if m_file:
+                                video_url = m_file.group(1).replace('\\/', '/')
+                                if video_url.endswith('.txt'): video_url += '#.m3u8'
+                                self._log_and_emit(download_id, f"Ara oynatıcıdan Manifest URL çıkarıldı: {video_url}")
+                    else:
+                        # Diğer basit oynatıcılar (FirePlayer olmayan)
+                        match = re.search(r'(?:file|src)\s*:\s*[\'"](https?://[^\'"]+)[\'"]', player_r.text)
+                        if match:
+                            video_url = match.group(1).replace('\\/', '/')
+                            if video_url.endswith('.txt'):
+                                video_url += '#.m3u8'
+                            self._log_and_emit(download_id, f"Ara oynatıcıdan Manifest URL çıkarıldı: {video_url}")
                 except Exception as e:
                     self._log_and_emit(download_id, f"Ara oynatıcı çözümlenirken hata: {e}")
             
