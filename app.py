@@ -185,5 +185,20 @@ def watch_vlc():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/open_downloads', methods=['POST'])
+def open_downloads():
+    try:
+        import subprocess, sys
+        downloads_path = os.path.abspath(BASE_DOWNLOADS)
+        if sys.platform == "win32":
+            os.startfile(downloads_path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", downloads_path])
+        else:
+            subprocess.Popen(["xdg-open", downloads_path])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5005, debug=True)

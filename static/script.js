@@ -333,5 +333,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === epModal) epModal.classList.remove('active');
     };
 
+    // Open Folder Logic
+    const btnOpenFolder = document.getElementById('btn-open-folder');
+    if (btnOpenFolder) {
+        btnOpenFolder.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/open_downloads', { method: 'POST' });
+                const result = await response.json();
+                if (result.error) alert('Klasör açılamadı: ' + result.error);
+            } catch (err) {
+                console.error("Klasör açma hatası:", err);
+            }
+        });
+    }
+
     loadLibrary();
 });
