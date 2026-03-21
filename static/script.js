@@ -195,6 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- VLC ICON SVG ---
+    const vlcIconSvg = `<svg class="vlc-icon-svg" viewBox="0 0 512 512" width="18" height="18" fill="white" style="margin-right: 4px;">
+        <path d="M480 432h-40.4L337.5 137.3c-4-10.8-14.3-17.3-25.5-17.3h-100c-11.2 0-21.5 6.5-25.5 17.3L84.4 432H44c-6.6 0-12 5.4-12 12v16c0 6.6 5.4 12 12 12h424c6.6 0 12-5.4 12-12v-16c0-6.6-5.4-12-12-12zm-316.5 0l33.3-100h118.4l33.3 100H163.5zm165.2-132H183.3l16.7-50h112l16.7 50zm-100-82l16.7-50h21.4l16.7 50h-54.8zM256 0c-14.7 0-26.7 12-26.7 26.7v32c0 14.7 12 26.7 26.7 26.7s26.7-12 26.7-26.7v-32C282.7 12 270.7 0 256 0z"/>
+    </svg>`;
+
     // --- VLC INTEGRATION ---
     async function watchInVlc(path) {
         if (!path) return;
@@ -235,13 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img src="${show.poster || '/static/placeholder.jpg'}" alt="${show.name}">
                     <div class="lib-source-badge">${show.source || 'Dizibox'}</div>
                     <div class="lib-overlay">
-                        <button class="lib-play" onclick="playVideo('${show.episodes[0].url}', '${show.episodes[0].name}', '${show.name}')"><i class="fas fa-play"></i></button>
-                        <button class="lib-vlc" title="VLC'de İzle"><i class="fas fa-video"></i></button>
+                        <button class="lib-play" title="Hemen İzle"><i class="fas fa-play"></i></button>
+                        <button class="lib-vlc" title="VLC'de İzle">${vlcIconSvg}</button>
                     </div>
                 </div>
                 <div class="lib-info">
                     <h3>${show.name}</h3>
-                    <p>${show.episodes.length} Bölüm</p>
+                    <p>${show.source === 'HDFilmCehennemi' && show.episodes.length === 1 ? 'Film' : show.episodes.length + ' Bölüm'}</p>
                 </div>
             `;
             
@@ -276,12 +281,23 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <div class="ep-num">${index + 1}</div>
                 <div class="ep-name">${ep.name.replace('.mp4', '')}</div>
-                <div class="ep-play"><i class="fas fa-play"></i></div>
+                <div class="ep-actions">
+                    <div class="ep-vlc" title="VLC'de İzle">${vlcIconSvg}</div>
+                    <div class="ep-play" title="İzle"><i class="fas fa-play"></i></div>
+                </div>
             `;
-            row.addEventListener('click', () => {
+            
+            // Fix row click - make it more specific
+            row.querySelector('.ep-play').onclick = () => {
                 epModal.classList.remove('active');
                 playVideo(ep.url, ep.name, show.name);
-            });
+            };
+            
+            row.querySelector('.ep-vlc').onclick = (e) => {
+                e.stopPropagation();
+                watchInVlc(ep.path);
+            };
+
             epList.appendChild(row);
         });
         epModal.classList.add('active');

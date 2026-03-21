@@ -224,11 +224,67 @@ body {
 
 .lib-vlc {
     background: #e67e22; /* VLC Orange */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.lib-play:hover, .lib-vlc:hover {
+.lib-vlc svg {
+    width: 24px;
+    height: 24px;
+}
+
+.vlc-icon-svg {
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+}
+
+/* Episode Row Actions */
+.ep-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.ep-vlc, .ep-play {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.ep-vlc {
+    background: rgba(230, 126, 34, 0.2);
+    border: 1px solid #e67e22;
+    color: #e67e22;
+}
+
+.ep-vlc:hover {
+    background: #e67e22;
+    color: white;
     transform: scale(1.1);
-    filter: brightness(1.2);
+}
+
+.ep-vlc svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.ep-play {
+    background: rgba(var(--accent-rgb), 0.2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+.ep-play:hover {
+    background: var(--accent);
+    color: white;
+    transform: scale(1.1);
 }
 
 .lib-info {
