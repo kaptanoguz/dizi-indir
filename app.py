@@ -40,62 +40,99 @@ def index():
 
 @app.route('/api/library')
 def get_library():
-    shows = []
+    result = {'series': [], 'movies': []}
     if not os.path.exists(BASE_DOWNLOADS):
-        return jsonify([])
+        return jsonify(result)
     
-    for show_dir in sorted(os.listdir(BASE_DOWNLOADS)):
-        full_path = os.path.join(BASE_DOWNLOADS, show_dir)
-        if os.path.isdir(full_path):
+    for item in sorted(os.listdir(BASE_DOWNLOADS)):
+        full_path = os.path.join(BASE_DOWNLOADS, item)
+        
+        # 1. Eski Tip Doğrudan .mp4 (Kök dizindeki filmler/tekliler)
+        if os.path.isfile(full_path) and item.endswith('.mp4'):
+            movie_name = item.replace('.mp4', '')
+            poster_url = None
+            if os.path.exists(os.path.join(BASE_DOWNLOADS, f"{movie_name}.jpg")):
+                poster_url = f"/video/{movie_name}.jpg"
+                
+            source = "Dizibox" # ya da HDFilmCehennemi
+            for h in db['history']:
+                if h['info'].get('title', '').startswith(movie_name):
+                    source = h['info'].get('source', 'Dizibox') # varsayılan
+                    break
+                    
+            result['movies'].append({
+                'name': movie_name,
+                'poster': poster_url,
+                'source': source,
+                'path': item,
+                'url': f'/video/{item}'
+            })
+            continue
+
+        if not os.path.isdir(full_path): continue
+            
+        if item == "Filmler":
+            # Filmler klasörünün içindeki her alt klasör bir filmdir
+            for movie_dir in sorted(os.listdir(full_path)):
+                movie_path = os.path.join(full_path, movie_dir)
+                if os.path.isdir(movie_path):
+                    movie_file = None
+                    for f in sorted(os.listdir(movie_path)):
+                        if f.endswith('.mp4'):
+                            movie_file = f
+                            break
+                    
+                    if movie_file:
+                        poster_url = None
+                        if os.path.exists(os.path.join(movie_path, "poster.jpg")):
+                            poster_url = f"/video/Filmler/{movie_dir}/poster.jpg"
+                            
+                        # Try to find source in history for movies
+                        source = "HDFilmCehennemi"
+                        for h in db['history']:
+                            if h['info'].get('title', '').startswith(movie_dir):
+                                source = h['info'].get('source', 'HDFilmCehennemi')
+                                break
+                                
+                        result['movies'].append({
+                            'name': movie_dir,
+                            'poster': poster_url,
+                            'source': source,
+                            'path': os.path.join("Filmler", movie_dir, movie_file),
+                            'url': f'/video/Filmler/{movie_dir}/{movie_file}'
+                        })
+        else:
+            # Diziler
             episodes = []
             poster_url = None
             source = "Dizibox" # Default
             
-            # Try to find source in history
             for h in db['history']:
-                if h['info'].get('title', '').startswith(show_dir):
+                if h['info'].get('title', '').startswith(item):
                     source = h['info'].get('source', 'Dizibox')
                     break
 
             if os.path.exists(os.path.join(full_path, "poster.jpg")):
-                poster_url = f"/video/{show_dir}/poster.jpg"
+                poster_url = f"/video/{item}/poster.jpg"
                 
-            for item in sorted(os.listdir(full_path)):
-                item_path = os.path.join(full_path, item)
-                
-                # 1. Direct mp4 processing (Series / older movies)
-                if os.path.isfile(item_path) and item.endswith('.mp4'):
-                    ep_path = os.path.join(show_dir, item)
+            for ep_file in sorted(os.listdir(full_path)):
+                if ep_file.endswith('.mp4'):
+                    ep_path = os.path.join(item, ep_file)
                     episodes.append({
-                        'name': item.replace('.mp4', ''),
+                        'name': ep_file.replace('.mp4', ''),
                         'path': ep_path,
                         'url': f'/video/{ep_path}'
                     })
-                
-                # 2. Sub-directory processing (New movie structure)
-                elif os.path.isdir(item_path):
-                    for sub_item in sorted(os.listdir(item_path)):
-                        if sub_item.endswith('.mp4'):
-                            ep_path = os.path.join(show_dir, item, sub_item)
-                            
-                            # Fallback poster from movie sub-directory
-                            if not poster_url and os.path.exists(os.path.join(item_path, "poster.jpg")):
-                                poster_url = f"/video/{show_dir}/{item}/poster.jpg"
-                                
-                            episodes.append({
-                                'name': item, # Show folder name instead of file
-                                'path': ep_path,
-                                'url': f'/video/{ep_path}'
-                            })
-                            
+                    
             if episodes:
-                shows.append({
-                    'name': show_dir,
+                result['series'].append({
+                    'name': item,
                     'poster': poster_url,
                     'source': source,
                     'episodes': episodes
                 })
-    return jsonify(shows)
+                
+    return jsonify(result)
 
 @app.route('/video/<path:filename>')
 def serve_video(filename):

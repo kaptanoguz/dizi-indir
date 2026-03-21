@@ -17,9 +17,10 @@
             <span>DiziBOX</span>
         </div>
         <ul class="nav-links">
-            <li class="active" data-view="library"><i class="fas fa-film"></i> Kütüphane</li>
+            <li class="active" data-view="series"><i class="fas fa-tv"></i> Diziler</li>
+            <li data-view="movies"><i class="fas fa-film"></i> Filmler</li>
             <li data-view="downloads"><i class="fas fa-download"></i> İndirilenler <span id="dl-count" class="badge">0</span></li>
-            <li data-view="add"><i class="fas fa-plus-circle"></i> Yeni Dizi Ekle</li>
+            <li data-view="add"><i class="fas fa-plus-circle"></i> Yeni İçerik Ekle</li>
         </ul>
     </nav>
 
@@ -27,12 +28,12 @@
         <!-- Add View -->
         <section id="view-add" class="view">
             <div class="add-container">
-                <h1>Yeni Dizi İndir</h1>
-                <p>İndirmek istediğiniz Dizibox bölüm veya sezon linkini buraya yapıştırın.</p>
+                <h1>Yeni Dizi/Film İndir</h1>
+                <p>İndirmek istediğiniz bölüm, sezon veya film linkini buraya yapıştırın.</p>
                 <div class="input-group">
-                    <input type="text" id="dl-url" placeholder="https://www.dizibox.live/...">
+                    <input type="text" id="dl-url" placeholder="https://www.../...">
                     <div class="mode-switch">
-                        <button class="active" data-mode="single">Tek Bölüm</button>
+                        <button class="active" data-mode="single">Tek Bölüm/Film</button>
                         <button data-mode="season">Tüm Sezon</button>
                     </div>
                 </div>
@@ -48,20 +49,37 @@
             </div>
         </section>
 
-        <!-- Library View -->
-        <section id="view-library" class="view active">
+        <!-- Series View -->
+        <section id="view-series" class="view active">
             <div class="header">
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 1rem;">
-                    <h2>İndirilen Kütüphane</h2>
-                    <button id="btn-open-folder" class="glow-button" style="padding: 0.5rem 1rem; font-size: 0.9rem;"><i class="fas fa-folder-open"></i> Klasörü Aç</button>
-                </div>
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Kütüphanede ara...">
+                <h2>İndirilen Diziler</h2>
+                <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
+                    <button class="glow-button btn-open-folder" style="padding: 10px 18px; font-size: 0.95rem; border-radius: 12px; height: 44px;"><i class="fas fa-folder-open"></i> Klasörü Aç</button>
+                    <div class="search-bar" style="margin: 0; height: 44px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Dizilerde ara...">
+                    </div>
                 </div>
             </div>
-            <div id="library-grid" class="grid">
+            <div id="series-grid" class="grid">
                 <!-- Series Cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- Movies View -->
+        <section id="view-movies" class="view">
+            <div class="header">
+                <h2>İndirilen Filmler</h2>
+                <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
+                    <button class="glow-button btn-open-folder" style="padding: 10px 18px; font-size: 0.95rem; border-radius: 12px; height: 44px;"><i class="fas fa-folder-open"></i> Klasörü Aç</button>
+                    <div class="search-bar" style="margin: 0; height: 44px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Filmlerde ara...">
+                    </div>
+                </div>
+            </div>
+            <div id="movies-grid" class="grid">
+                <!-- Movie Cards will be injected here -->
             </div>
         </section>
 

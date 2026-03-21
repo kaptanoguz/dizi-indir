@@ -2,7 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     const views = document.querySelectorAll('.view');
     const navItems = document.querySelectorAll('.nav-links li');
-    const libraryGrid = document.getElementById('library-grid');
+    const seriesGrid = document.getElementById('series-grid');
+    const moviesGrid = document.getElementById('movies-grid');
     const dlList = document.getElementById('dl-list');
     const dlCountBadge = document.getElementById('dl-count');
     
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 v.classList.remove('active');
                 if (v.id === viewId) v.classList.add('active');
             });
-            if (viewId === 'view-library') loadLibrary();
+            if (viewId === 'view-series' || viewId === 'view-movies') loadLibrary();
         });
     });
 
@@ -223,14 +224,16 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/library');
             const data = await res.json();
-            renderLibrary(data);
+            renderSeries(data.series || []);
+            renderMovies(data.movies || []);
         } catch (err) { console.error('Library Load Error:', err); }
     }
 
-    function renderLibrary(shows) {
-        libraryGrid.innerHTML = '';
+    function renderSeries(shows) {
+        if (!seriesGrid) return;
+        seriesGrid.innerHTML = '';
         if (shows.length === 0) {
-            libraryGrid.innerHTML = '<div class="empty-state">Henüz dizi indirilmemiş.</div>';
+            seriesGrid.innerHTML = '<div class="empty-state">Henüz dizi indirilmemiş.</div>';
             return;
         }
 
@@ -242,20 +245,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img src="${show.poster || '/static/placeholder.jpg'}" alt="${show.name}">
                     <div class="lib-source-badge">${show.source || 'Dizibox'}</div>
                     <div class="lib-overlay">
-                        <button class="lib-play" title="Hemen İzle"><i class="fas fa-play"></i></button>
+                        <button class="lib-play" title="Bölümleri Gör"><i class="fas fa-play"></i></button>
                         <button class="lib-vlc" title="VLC'de İzle">${vlcIconSvg}</button>
                     </div>
                 </div>
                 <div class="lib-info">
                     <h3>${show.name}</h3>
-                    <p>${show.source === 'HDFilmCehennemi' && show.episodes.length === 1 ? 'Film' : show.episodes.length + ' Bölüm'}</p>
+                    <p>${show.episodes ? show.episodes.length : 0} Bölüm</p>
                 </div>
             `;
             
-            // Add event listener for VLC
             card.querySelector('.lib-vlc').onclick = (e) => {
                 e.stopPropagation();
-                // Assuming the first episode's path for VLC for a show card
                 if (show.episodes && show.episodes.length > 0) {
                     watchInVlc(show.episodes[0].path);
                 } else {
@@ -264,7 +265,45 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             card.addEventListener('click', () => openShowEpisodes(show));
-            libraryGrid.appendChild(card);
+            seriesGrid.appendChild(card);
+        });
+    }
+
+    function renderMovies(movies) {
+        if (!moviesGrid) return;
+        moviesGrid.innerHTML = '';
+        if (movies.length === 0) {
+            moviesGrid.innerHTML = '<div class="empty-state">Henüz film indirilmemiş.</div>';
+            return;
+        }
+
+        movies.forEach(movie => {
+            const card = document.createElement('div');
+            card.className = 'lib-card';
+            card.innerHTML = `
+                <div class="lib-poster">
+                    <img src="${movie.poster || '/static/placeholder.jpg'}" alt="${movie.name}">
+                    <div class="lib-source-badge">${movie.source || 'HDFilmCehennemi'}</div>
+                    <div class="lib-overlay">
+                        <button class="lib-play" title="Hemen İzle"><i class="fas fa-play"></i></button>
+                        <button class="lib-vlc" title="VLC'de İzle">${vlcIconSvg}</button>
+                    </div>
+                </div>
+                <div class="lib-info">
+                    <h3>${movie.name}</h3>
+                    <p>Film</p>
+                </div>
+            `;
+            
+            card.querySelector('.lib-vlc').onclick = (e) => {
+                e.stopPropagation();
+                watchInVlc(movie.path);
+            };
+            
+            card.addEventListener('click', () => {
+                playVideo(movie.url, movie.name, 'Film');
+            });
+            moviesGrid.appendChild(card);
         });
     }
 
@@ -334,9 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Open Folder Logic
-    const btnOpenFolder = document.getElementById('btn-open-folder');
-    if (btnOpenFolder) {
-        btnOpenFolder.addEventListener('click', async () => {
+    const openFolderBtns = document.querySelectorAll('.btn-open-folder');
+    openFolderBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
             try {
                 const response = await fetch('/api/open_downloads', { method: 'POST' });
                 const result = await response.json();
@@ -345,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Klasör açma hatası:", err);
             }
         });
-    }
+    });
 
     loadLibrary();
 });
