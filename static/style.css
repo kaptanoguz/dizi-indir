@@ -466,6 +466,36 @@ body {
     box-shadow: 0 0 10px rgba(0, 132, 255, 0.5);
 }
 
+.support-info {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.support-info span {
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.support-tags {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    background: rgba(var(--accent-rgb), 0.15);
+    border: 1px solid var(--accent);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--accent);
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.2);
+}
+
 .progress-fill.pulse {
     animation: pulse 2s infinite ease-in-out;
     background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));

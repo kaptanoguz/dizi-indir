@@ -148,8 +148,11 @@ def watch_vlc():
     if not path:
         return jsonify({'error': 'Yol belirtilmedi'}), 400
     
-    # Ensure it's an absolute path
-    abs_path = os.path.abspath(path)
+    # If relative, join with downloads folder
+    if not os.path.isabs(path):
+        abs_path = os.path.abspath(os.path.join(BASE_DOWNLOADS, path))
+    else:
+        abs_path = path
     
     if not os.path.exists(abs_path):
         return jsonify({'error': 'Dosya bulunamadı'}), 404
