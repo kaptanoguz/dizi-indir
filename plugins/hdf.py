@@ -3,11 +3,54 @@ import re
 import requests
 import yt_dlp
 from bs4 import BeautifulSoup
+import shutil
 from plugins.base_crawler import BaseCrawler
 
 class HDFPlugin(BaseCrawler):
     def __init__(self, socketio=None):
         super().__init__(socketio)
+
+    def _log_and_emit(self, download_id, msg, is_error=False):
+        status_type = 'error' if is_error else 'info'
+        print(f"[HDF PLUGIN] {msg}")
+        if self.socketio:
+            self.socketio.emit('download_progress', {
+                'id': download_id, 'status': status_type, 'message': msg
+            }, namespace='/')
+
+    def check_ffmpeg(self, download_id):
+        if not shutil.which('ffmpeg'):
+            self._log_and_emit(download_id, "UYARI: ffmpeg sisteminizde yüklü değil! M3U8 (HLS) videoları indirilemeyebilir.", is_error=False)
+
+    def extract_fallback(self, soup, download_id):
+        # 1. Search IFRAMEs
+        keywords = ['embed', 'player', 'vidmoly', 'dood', 'stream', 'aparat']
+        for iframe in soup.find_all('iframe'):
+            src = iframe.get('src')
+            if src:
+                if any(k in src.lower() for k in keywords):
+                    if src.startswith('//'): src = 'https:' + src
+                    elif src.startswith('/'): src = 'https://www.hdfilmcehennemi.now' + src
+                    self._log_and_emit(download_id, f"Uyumlu Iframe kaynağı bulundu: {src}")
+                    return src
+        
+        # 2. Search Script Tags for .m3u8
+        for script in soup.find_all('script'):
+            if script.string:
+                match = re.search(r'https?://[^\'"\s]+\.m3u8[^\'"]*', script.string)
+                if match:
+                    src = match.group(0)
+                    self._log_and_emit(download_id, f"Script içerisinde HLS/m3u8 akışı bulundu: {src}")
+                    return src
+                    
+        # 3. Search Data Attributes
+        for tag in soup.find_all(['div', 'video', 'span', 'a']):
+            src = tag.get('data-video-src') or tag.get('data-source') or tag.get('data-src')
+            if src and 'http' in src:
+                self._log_and_emit(download_id, f"Data attribute kaynağı bulundu: {src}")
+                return src
+                
+        return None
 
     def get_info(self, url):
         try:
@@ -76,6 +119,9 @@ class HDFPlugin(BaseCrawler):
             r = self.session.get(url, timeout=30)
             soup = BeautifulSoup(r.text, 'html.parser')
 
+            self.check_ffmpeg(download_id)
+            self._log_and_emit(download_id, "HDFilmCehennemi video kaynağı çözümleniyor...")
+
             # 1. Scrape the nonce using a very flexible regex
             # We look for something like nonce: 'e1b94ba64b' or "nonce":"e1b94ba64b"
             nonce = None
@@ -97,64 +143,72 @@ class HDFPlugin(BaseCrawler):
                     nonce = nonce_matches[0]
             
             if not nonce:
-                print("HDF Nonce bulunamadı! Sayfa içeriği analiz edilemedi.")
+                self._log_and_emit(download_id, "HDF Nonce bulunamadı! Normal kaynak araması (Fallback) denenecek.")
             else:
-                print(f"HDF Nonce başarıyla yakalandı: {nonce}")
+                self._log_and_emit(download_id, f"HDF Nonce başarıyla yakalandı: {nonce}")
             
-            # 2. Find FastPlay tab data
+            video_url_orig = None
+            
+            # --- YÖNTEM 1: AJAX TABANLI OYNATICI (FastPlay, SetPlay vb.) ---
+            self._log_and_emit(download_id, "Adım 1: AJAX tabanlı oynatıcılar (FastPlay/SetPlay) aranıyor...")
             tab = soup.find('a', attrs={'data-player-name': 'FastPlay'})
             if not tab:
                 # Fallback to any available player if FastPlay is missing
                 tab = soup.find('a', class_='options2')
             
-            if not tab:
-                print("HDF Oynatıcı sekmesi bulunamadı.")
+            if tab and nonce:
+
+                post_id = tab.get('data-post-id')
+                player_name = tab.get('data-player-name')
+                part_key = tab.get('data-part-key')
+                
+                # The AJAX endpoint
+                ajax_url = "https://www.hdfilmcehennemi.now/wp-admin/admin-ajax.php"
+                
+                # Form data for the AJAX request
+                payload = {
+                    'action': 'get_video_url',
+                    'nonce': nonce,
+                    'post_id': post_id,
+                    'player_name': player_name,
+                    'part_key': part_key
+                }
+
+                headers = {
+                    'Referer': url,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Origin': 'https://www.hdfilmcehennemi.now'
+                }
+
+                self._log_and_emit(download_id, f"AJAX isteği gönderiliyor... (Oynatıcı: {player_name})")
+                r_ajax = self.session.post(ajax_url, data=payload, headers=headers, timeout=20)
+                ajax_data = r_ajax.json()
+                
+                if ajax_data.get('success') and ajax_data.get('data'):
+                    data_val = ajax_data['data']
+                    if isinstance(data_val, dict) and 'url' in data_val:
+                        video_url_orig = data_val['url']
+                    else:
+                        video_url_orig = str(data_val)
+                    self._log_and_emit(download_id, f"AJAX Başarılı! Oynatıcı URL: {video_url_orig}")
+                else:
+                    self._log_and_emit(download_id, f"AJAX Başarısız oldu. Yanıt: {ajax_data}")
+
+            # --- YÖNTEM 2: FALLBACK (İframe, script içi m3u8, data attributes) ---
+            if not video_url_orig:
+                self._log_and_emit(download_id, "Adım 2: Alternatif modda oynatıcı/iframe aranıyor...")
+                video_url_orig = self.extract_fallback(soup, download_id)
+
+            if not video_url_orig:
+                self._log_and_emit(download_id, "Kritik Hata: Analiz edilen sayfada bilinen hiçbir video kaynağı (FastPlay, Iframe, Embed, M3U8) bulunamadı!", is_error=True)
                 return False
 
-            post_id = tab.get('data-post-id')
-            player_name = tab.get('data-player-name')
-            part_key = tab.get('data-part-key')
-            
-            # The AJAX endpoint
-            ajax_url = "https://www.hdfilmcehennemi.now/wp-admin/admin-ajax.php"
-            
-            # Form data for the AJAX request
-            payload = {
-                'action': 'get_video_url',
-                'nonce': nonce,
-                'post_id': post_id,
-                'player_name': player_name,
-                'part_key': part_key
-            }
-
-            headers = {
-                'Referer': url,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Origin': 'https://www.hdfilmcehennemi.now'
-            }
-
-            print(f"HDF AJAX isteği gönderiliyor... (post_id: {post_id}, nonce: {nonce})")
-            r_ajax = self.session.post(ajax_url, data=payload, headers=headers, timeout=20)
-            ajax_data = r_ajax.json()
-            
-            if not ajax_data.get('success') or not ajax_data.get('data'):
-                print(f"HDF AJAX hatası (Başarısız): {ajax_data}")
-                return False
-                
-            data_val = ajax_data['data']
-            if isinstance(data_val, dict) and 'url' in data_val:
-                video_url_orig = data_val['url']
-            else:
-                video_url_orig = str(data_val)
-                
-            print(f"HDF AJAX Başarılı! Oynatıcı URL: {video_url_orig}")
-            
             # Convert iframe URL to manifest URL if it's FastPlay
             video_url = video_url_orig
             if 'fastplay.mom' in video_url:
                 video_id = video_url.rstrip('/').split('/')[-1]
                 video_url = f"https://fastplay.mom/manifests/{video_id}/master.txt"
-                print(f"HDF FastPlay Manifest URL oluşturuldu: {video_url}")
+                self._log_and_emit(download_id, f"FastPlay Manifest URL oluşturuldu: {video_url}")
             
             # Save logic
             show_name = info.get('show', 'Film')
@@ -171,7 +225,7 @@ class HDFPlugin(BaseCrawler):
             
             if not os.path.exists(save_dir): os.makedirs(save_dir)
             output_path = os.path.join(save_dir, filename)
-            print(f"HDF Kayıt yolu: {output_path}")
+            self._log_and_emit(download_id, f"Hedef Dosya Yolu: {output_path}")
             
             # Poster
             if info.get('poster'):
@@ -186,11 +240,11 @@ class HDFPlugin(BaseCrawler):
             if 'fastplay.mom' in video_url_orig:
                 fixed_referer = "https://fastplay.mom/"
             
-            print(f"HDF İndirme başlatılıyor... (yt-dlp) | Referer: {fixed_referer}")
+            self._log_and_emit(download_id, f"yt-dlp Motoru Başlatılıyor... | Referer: {fixed_referer}")
             
             ydl_opts = {
                 'outtmpl': output_path,
-                'quiet': False, # Detayları görelim
+                'quiet': False,
                 'no_warnings': False,
                 'http_headers': {
                     'User-Agent': self.session.headers.get('User-Agent'),
@@ -205,14 +259,18 @@ class HDFPlugin(BaseCrawler):
                 'concurrent_fragment_downloads': 10,
                 'nocheckcertificate': True,
                 'ignoreerrors': True,
+                # Kullanıcı talebi üzerine ekstra parametreler
+                'noplaylist': True,
                 'external_downloader_args': ['-loglevel', 'info'],
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.params['hls_prefer_native'] = True
+                # ffmpeg'i önceliklendir (kullanıcı talebi)
+                ydl.params['hls_prefer_ffmpeg'] = True
+                ydl.params['hls_prefer_native'] = False
                 ydl.download([video_url])
             
-            print(f"HDF İndirme işlemi tamamlandı (veya durdu).")
+            self._log_and_emit(download_id, f"İndirme motoru işlemi tamamladı.")
             return True
             
             return True
