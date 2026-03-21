@@ -195,6 +195,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- VLC INTEGRATION ---
+    async function watchInVlc(path) {
+        if (!path) return;
+        try {
+            const response = await fetch('/api/watch_vlc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: path })
+            });
+            const result = await response.json();
+            if (!result.success) alert("VLC başlatılamadı: " + result.error);
+        } catch (error) {
+            console.error("VLC hatası:", error);
+        }
+    }
+
     // --- LIBRARY LOGIC ---
     async function loadLibrary() {
         try {
@@ -213,19 +229,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         shows.forEach(show => {
             const card = document.createElement('div');
-            card.className = 'card';
+            card.className = 'lib-card';
             card.innerHTML = `
-                <div class="card-img" style="${show.poster ? `background-image: url('${show.poster}'); background-size: cover;` : ''}">
-                    ${show.poster ? '' : '<i class="fas fa-film"></i>'}
-                    <div class="card-overlay">
-                        <div class="btn-play-series"><i class="fas fa-list"></i></div>
+                <div class="lib-poster">
+                    <img src="${show.poster || '/static/placeholder.jpg'}" alt="${show.name}">
+                    <div class="lib-source-badge">${show.source || 'Dizibox'}</div>
+                    <div class="lib-overlay">
+                        <button class="lib-play" onclick="playVideo('${show.episodes[0].url}', '${show.episodes[0].name}', '${show.name}')"><i class="fas fa-play"></i></button>
+                        <button class="lib-vlc" title="VLC'de İzle"><i class="fas fa-video"></i></button>
                     </div>
                 </div>
-                <div class="card-info">
+                <div class="lib-info">
                     <h3>${show.name}</h3>
                     <p>${show.episodes.length} Bölüm</p>
                 </div>
             `;
+            
+            // Add event listener for VLC
+            card.querySelector('.lib-vlc').onclick = (e) => {
+                e.stopPropagation();
+                // Assuming the first episode's path for VLC for a show card
+                if (show.episodes && show.episodes.length > 0) {
+                    watchInVlc(show.episodes[0].path);
+                } else {
+                    alert("Bu dizi için oynatılabilir bölüm bulunamadı.");
+                }
+            };
+            
             card.addEventListener('click', () => openShowEpisodes(show));
             libraryGrid.appendChild(card);
         });

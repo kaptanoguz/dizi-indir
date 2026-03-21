@@ -49,6 +49,14 @@ def get_library():
         if os.path.isdir(full_path):
             episodes = []
             poster_url = None
+            source = "Dizibox" # Default
+            
+            # Try to find source in history
+            for h in db['history']:
+                if h['info'].get('title', '').startswith(show_dir):
+                    source = h['info'].get('source', 'Dizibox')
+                    break
+
             if os.path.exists(os.path.join(full_path, "poster.jpg")):
                 poster_url = f"/video/{show_dir}/poster.jpg"
                 
@@ -64,6 +72,7 @@ def get_library():
                 shows.append({
                     'name': show_dir,
                     'poster': poster_url,
+                    'source': source,
                     'episodes': episodes
                 })
     return jsonify(shows)
@@ -130,6 +139,28 @@ def start_worker():
         worker_thread = threading.Thread(target=worker)
         worker_thread.daemon = True
         worker_thread.start()
+
+@app.route('/api/watch_vlc', methods=['POST'])
+def watch_vlc():
+    data = request.json
+    path = data.get('path')
+    
+    if not path:
+        return jsonify({'error': 'Yol belirtilmedi'}), 400
+    
+    # Ensure it's an absolute path
+    abs_path = os.path.abspath(path)
+    
+    if not os.path.exists(abs_path):
+        return jsonify({'error': 'Dosya bulunamadı'}), 404
+        
+    try:
+        import subprocess
+        # Try to open with vlc
+        subprocess.Popen(['vlc', abs_path])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5005, debug=True)

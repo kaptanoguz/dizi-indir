@@ -77,6 +77,12 @@ class DiziboxEngine:
             if self.socketio:
                 self.socketio.emit('download_progress', {'id': download_id, 'status': 'finished', 'progress': '100'}, namespace='/')
 
+    def get_season_links(self, url):
+        plugin = self.get_plugin(url)
+        if plugin and hasattr(plugin, 'get_season_links'):
+            return plugin.get_season_links(url)
+        return [url]
+
     def get_episode_info(self, url):
         try:
             response = self.session.get(url, timeout=10)
