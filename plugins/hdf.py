@@ -203,12 +203,28 @@ class HDFPlugin(BaseCrawler):
                 self._log_and_emit(download_id, "Kritik Hata: Analiz edilen sayfada bilinen hiçbir video kaynağı (FastPlay, Iframe, Embed, M3U8) bulunamadı!", is_error=True)
                 return False
 
-            # Convert iframe URL to manifest URL if it's FastPlay
+            # Convert iframe URL to manifest URL if it's FastPlay or SetPlay
             video_url = video_url_orig
+            
             if 'fastplay.mom' in video_url:
                 video_id = video_url.rstrip('/').split('/')[-1]
                 video_url = f"https://fastplay.mom/manifests/{video_id}/master.txt"
                 self._log_and_emit(download_id, f"FastPlay Manifest URL oluşturuldu: {video_url}")
+            elif 'setplay.shop' in video_url or 'index.php' in video_url:
+                self._log_and_emit(download_id, f"SetPlay/Ara Oynatıcı algılandı, sayfa çözümleniyor: {video_url}")
+                try:
+                    # Oynatıcı iframe sayfasını kendimiz indirelim (yt-dlp takılmasın)
+                    player_r = self.session.get(video_url, headers={'Referer': url}, timeout=15)
+                    # Sayfa içindeki file: "..." veya src: "..." bilgisini bulalım
+                    match = re.search(r'(?:file|src)\s*:\s*[\'"](https?://[^\'"]+)[\'"]', player_r.text)
+                    if match:
+                        video_url = match.group(1)
+                        # yt-dlp'nin .txt engeline takılmamak için URL sonuna query ekleyelim
+                        if video_url.endswith('.txt'):
+                            video_url += '#.m3u8'
+                        self._log_and_emit(download_id, f"Ara oynatıcıdan Manifest URL çıkarıldı: {video_url}")
+                except Exception as e:
+                    self._log_and_emit(download_id, f"Ara oynatıcı çözümlenirken hata: {e}")
             
             # Save logic
             show_name = info.get('show', 'Film')
