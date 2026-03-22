@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://claude.ai/public/artifacts/99f8bb44-20ae-4d23-a0a6-23c78cc9d52e" alt="Dizibox Premium Logo" width="300">
+  <img src="static/cipherdrop_logo.png" alt="CipherDrop Logo" width="300">
 </div>
 
 # CipherDrop
