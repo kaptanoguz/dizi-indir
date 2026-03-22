@@ -423,6 +423,20 @@ function closePlayer() {
 document.querySelector('.close-player').onclick = closePlayer;
 
 // Video controls logic
+let controlsTimeout;
+function showControls() {
+    playerContainer.classList.add('show-controls');
+    clearTimeout(controlsTimeout);
+    controlsTimeout = setTimeout(() => {
+        if (!videoElement.paused) {
+            playerContainer.classList.remove('show-controls');
+        }
+    }, 3000);
+}
+
+playerContainer.onmousemove = showControls;
+videoElement.onplay = showControls;
+
 playPauseBtn.onclick = togglePlay;
 videoElement.onclick = togglePlay;
 

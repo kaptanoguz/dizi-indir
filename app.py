@@ -34,14 +34,25 @@ app.register_blueprint(views_bp)
 api_bp = init_api_routes(download_service, engine)
 app.register_blueprint(api_bp, url_prefix='/api')
 
-@app.route('/video/<path:filename>')
-def serve_video(filename):
-    # Path Traversal (Yetkisiz dizin erişimi) kontrolü
-    abs_path = os.path.realpath(os.path.join(Config.BASE_DOWNLOADS, filename))
-    base_real = os.path.realpath(Config.BASE_DOWNLOADS)
-    if not abs_path.startswith(base_real):
-        return "Unauthorized", 403
-    return send_from_directory(Config.BASE_DOWNLOADS, filename)
+@app.route('/video_file')
+def video_file():
+    target_path = request.args.get('path')
+    if not target_path:
+        return "Path required", 400
+        
+    abs_path = os.path.realpath(target_path)
+    base_check = False
+    for root in Config.ALLOWED_ROOTS:
+        if abs_path.startswith(root):
+            base_check = True
+            break
+            
+    if not base_check or not os.path.exists(abs_path):
+        return "Unauthorized or Not Found", 403
+        
+    directory = os.path.dirname(abs_path)
+    filename = os.path.basename(abs_path)
+    return send_from_directory(directory, filename)
 
 if __name__ == '__main__':
     logging.info("Starting CipherDrop on port 5005")

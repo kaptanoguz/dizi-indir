@@ -97,7 +97,7 @@ class DiziboxPlugin(BaseCrawler):
             title_part = f" - {info['title']}" if info.get('title') else ""
             filename = self.sanitize_filename(f"{info['episode']}. Bölüm{title_part}.mp4")
             
-            save_dir = os.path.join(Config.BASE_DOWNLOADS, folder_name)
+            save_dir = os.path.join(Config.SERIES_DIR, folder_name)
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
                 

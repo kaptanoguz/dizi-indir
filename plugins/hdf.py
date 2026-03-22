@@ -256,11 +256,11 @@ class HDFPlugin(BaseCrawler):
             is_movie = show_name == 'Film' or info.get('season') == '-'
             
             if is_movie:
-                # Each movie in its own folder inside 'Filmler'
-                save_dir = os.path.join(Config.BASE_DOWNLOADS, 'Filmler', title_sanitized)
+                # Each movie in its own folder inside MOVIES_DIR
+                save_dir = os.path.join(Config.MOVIES_DIR, title_sanitized)
                 filename = f"{title_sanitized}.mp4"
             else:
-                save_dir = os.path.join(Config.BASE_DOWNLOADS, self.sanitize_filename(show_name))
+                save_dir = os.path.join(Config.SERIES_DIR, self.sanitize_filename(show_name))
                 filename = f"{title_sanitized}.mp4"
             
             if not os.path.exists(save_dir): os.makedirs(save_dir)

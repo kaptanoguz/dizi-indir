@@ -74,9 +74,14 @@ def init_api_routes(download_service, engine):
             return jsonify({'error': 'Yol belirtilmedi'}), 400
             
         # Path traversal prevention
-        abs_path = os.path.realpath(os.path.join(Config.BASE_DOWNLOADS, path))
-        base_real = os.path.realpath(Config.BASE_DOWNLOADS)
-        if not abs_path.startswith(base_real):
+        abs_path = os.path.realpath(path)
+        base_check = False
+        for root in Config.ALLOWED_ROOTS:
+            if abs_path.startswith(root):
+                base_check = True
+                break
+                
+        if not base_check:
             return jsonify({'error': 'Yetkisiz yol erişimi'}), 403
         
         if not os.path.exists(abs_path):
@@ -99,12 +104,20 @@ def init_api_routes(download_service, engine):
     def open_downloads():
         try:
             req_path = request.json.get('path', '') if request.is_json else ''
-            downloads_path = os.path.realpath(os.path.join(Config.BASE_DOWNLOADS, req_path))
-            base_real = os.path.realpath(Config.BASE_DOWNLOADS)
             
-            # Path traverse protection
-            if not downloads_path.startswith(base_real):
-                downloads_path = base_real
+            # If req_path is 'Filmler', use MOVIES_DIR, else SERIES_DIR
+            target_base = Config.MOVIES_DIR if req_path == 'Filmler' else Config.SERIES_DIR
+            downloads_path = os.path.realpath(target_base)
+            
+            # Security: just in case
+            base_check = False
+            for root in Config.ALLOWED_ROOTS:
+                if downloads_path.startswith(root):
+                    base_check = True
+                    break
+            
+            if not base_check:
+                downloads_path = os.path.realpath(Config.BASE_DOWNLOADS)
                 
             if not os.path.exists(downloads_path):
                 os.makedirs(downloads_path, exist_ok=True)
