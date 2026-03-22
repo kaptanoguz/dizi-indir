@@ -517,7 +517,12 @@ document.addEventListener('keydown', (e) => {
 document.querySelectorAll('.btn-open-folder').forEach(btn => {
     btn.addEventListener('click', async () => {
         try {
-            const res = await fetch('/api/open_downloads', {method: 'POST'});
+            const reqPath = btn.getAttribute('data-path') || '';
+            const res = await fetch('/api/open_downloads', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: reqPath})
+            });
             const data = await res.json();
             if(data.error) showToast(data.error, "error");
         } catch(e) {

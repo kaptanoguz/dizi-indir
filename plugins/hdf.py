@@ -5,6 +5,7 @@ import yt_dlp
 from bs4 import BeautifulSoup
 import shutil
 from plugins.base_crawler import BaseCrawler
+from config import Config
 
 class HDFPlugin(BaseCrawler):
     def __init__(self, socketio=None):
@@ -256,10 +257,10 @@ class HDFPlugin(BaseCrawler):
             
             if is_movie:
                 # Each movie in its own folder inside 'Filmler'
-                save_dir = os.path.join('downloads', 'Filmler', title_sanitized)
+                save_dir = os.path.join(Config.BASE_DOWNLOADS, 'Filmler', title_sanitized)
                 filename = f"{title_sanitized}.mp4"
             else:
-                save_dir = os.path.join('downloads', self.sanitize_filename(show_name))
+                save_dir = os.path.join(Config.BASE_DOWNLOADS, self.sanitize_filename(show_name))
                 filename = f"{title_sanitized}.mp4"
             
             if not os.path.exists(save_dir): os.makedirs(save_dir)

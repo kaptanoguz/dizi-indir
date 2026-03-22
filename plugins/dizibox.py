@@ -9,6 +9,7 @@ from hashlib import md5
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from plugins.base_crawler import BaseCrawler
+from config import Config
 
 class DiziboxPlugin(BaseCrawler):
     def __init__(self, socketio=None):
@@ -96,7 +97,7 @@ class DiziboxPlugin(BaseCrawler):
             title_part = f" - {info['title']}" if info.get('title') else ""
             filename = self.sanitize_filename(f"{info['episode']}. Bölüm{title_part}.mp4")
             
-            save_dir = os.path.join('downloads', folder_name)
+            save_dir = os.path.join(Config.BASE_DOWNLOADS, folder_name)
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
                 

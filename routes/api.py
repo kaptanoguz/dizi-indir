@@ -98,7 +98,17 @@ def init_api_routes(download_service, engine):
     @api_bp.route('/open_downloads', methods=['POST'])
     def open_downloads():
         try:
-            downloads_path = os.path.abspath(Config.BASE_DOWNLOADS)
+            req_path = request.json.get('path', '') if request.is_json else ''
+            downloads_path = os.path.realpath(os.path.join(Config.BASE_DOWNLOADS, req_path))
+            base_real = os.path.realpath(Config.BASE_DOWNLOADS)
+            
+            # Path traverse protection
+            if not downloads_path.startswith(base_real):
+                downloads_path = base_real
+                
+            if not os.path.exists(downloads_path):
+                os.makedirs(downloads_path, exist_ok=True)
+                
             if sys.platform == "win32":
                 os.startfile(downloads_path)
             elif sys.platform == "darwin":

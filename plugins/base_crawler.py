@@ -27,19 +27,13 @@ class BaseCrawler:
                 else:
                     p = "0"
 
-            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-            speed = ansi_escape.sub('', d.get('_speed_str', 'N/A'))
-            eta = ansi_escape.sub('', d.get('_eta_str', 'N/A'))
-            downloaded = ansi_escape.sub('', d.get('_downloaded_bytes_str', 'N/A'))
-            total = ansi_escape.sub('', d.get('_total_bytes_str', 'N/A'))
-            
             progress_data = {
                 'id': download_id,
                 'progress': p,
-                'speed': speed,
-                'eta': eta,
-                'downloaded': downloaded,
-                'total': total,
+                'speed': d.get('speed', 0) or 0,
+                'eta': d.get('eta', 0) or 0,
+                'downloaded_bytes': d.get('downloaded_bytes', 0) or 0,
+                'total_bytes': d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0) or 0,
                 'status': 'downloading'
             }
             if self.socketio:
