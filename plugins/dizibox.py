@@ -92,10 +92,14 @@ class DiziboxPlugin(BaseCrawler):
         try:
             episode_url = info['url']
             folder_name = self.sanitize_filename(f"{info['show']} {info['season']}.Sezon")
-            filename = self.sanitize_filename(f"{info['episode']}. Bölüm{f' - {info['title']}' if info.get('title') else ''}.mp4")
+            
+            title_part = f" - {info['title']}" if info.get('title') else ""
+            filename = self.sanitize_filename(f"{info['episode']}. Bölüm{title_part}.mp4")
             
             save_dir = os.path.join('downloads', folder_name)
-            if not os.path.exists(save_dir): os.makedirs(save_dir)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                
             output_path = os.path.join(save_dir, filename)
 
             # Poster
@@ -106,18 +110,25 @@ class DiziboxPlugin(BaseCrawler):
             r = self.session.get(episode_url, timeout=30)
             soup = BeautifulSoup(r.text, 'html.parser')
             king_iframe = soup.find('iframe', {'src': re.compile(r'king\.php')})
-            if not king_iframe: return False
+            if not king_iframe:
+                return False
+                
             king_url = king_iframe['src']
             
             r_king = self.session.get(king_url, headers={'Referer': episode_url}, timeout=30)
             soup_king = BeautifulSoup(r_king.text, 'html.parser')
             moly_iframe = soup_king.find('iframe', {'src': re.compile(r'molystream\.org/embed/')})
-            if not moly_iframe: return False
+            
+            if not moly_iframe:
+                return False
+                
             moly_url = moly_iframe['src']
             
             r_moly = self.session.get(moly_url, headers={'Referer': king_url}, timeout=30)
             match = re.search(r'CryptoJS\.AES\.decrypt\("([^"]+)",\s*"([^"]+)"\)', r_moly.text, re.DOTALL)
-            if not match: return False
+            
+            if not match:
+                return False
             
             decrypted_html = self.decrypt(match.group(1), match.group(2))
             video_url = BeautifulSoup(decrypted_html, 'html.parser').find('source')['src']
@@ -141,5 +152,9 @@ class DiziboxPlugin(BaseCrawler):
             return True
         except Exception as e:
             if self.socketio:
-                self.socketio.emit('download_progress', {'id': download_id, 'status': 'error', 'error': str(e)}, namespace='/')
+                self.socketio.emit(
+                    'download_progress',
+                    {'id': download_id, 'status': 'error', 'error': str(e)},
+                    namespace='/'
+                )
             return False

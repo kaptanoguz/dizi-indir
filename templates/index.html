@@ -3,126 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiziBOX - Home Theater</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <title>DiziBOX Premium Downloader</title>
+    
+    <!-- Google Fonts: Outfit for UI, JetBrains Mono for numbers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="overlay"></div>
-    
-    <nav class="sidebar">
-        <div class="logo">
-            <i class="fas fa-play-circle circle-logo"></i>
-            <span>DiziBOX</span>
-        </div>
-        <ul class="nav-links">
-            <li class="active" data-view="series"><i class="fas fa-tv"></i> Diziler</li>
-            <li data-view="movies"><i class="fas fa-film"></i> Filmler</li>
-            <li data-view="downloads"><i class="fas fa-download"></i> İndirilenler <span id="dl-count" class="badge">0</span></li>
-            <li data-view="add"><i class="fas fa-plus-circle"></i> Yeni İçerik Ekle</li>
-        </ul>
-    </nav>
 
-    <main class="content">
-        <!-- Add View -->
-        <section id="view-add" class="view">
-            <div class="add-container">
-                <h1>Yeni Dizi/Film İndir</h1>
-                <p>İndirmek istediğiniz bölüm, sezon veya film linkini buraya yapıştırın.</p>
-                <div class="input-group">
-                    <input type="text" id="dl-url" placeholder="https://www.../...">
-                    <div class="mode-switch">
-                        <button class="active" data-mode="single">Tek Bölüm/Film</button>
-                        <button data-mode="season">Tüm Sezon</button>
-                    </div>
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-play-circle neon-text"></i> DiziBOX<span>Premium</span>
+        </div>
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active" data-target="view-download">
+                <i class="fas fa-cloud-download-alt"></i> İndirme Merkezi
+            </a>
+            <a href="#" class="nav-item" data-target="view-series" onclick="loadLibrary()">
+                <i class="fas fa-tv"></i> Diziler
+            </a>
+            <a href="#" class="nav-item" data-target="view-movies" onclick="loadLibrary()">
+                <i class="fas fa-film"></i> Filmler
+            </a>
+        </nav>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        
+        <!-- DOWNLOAD VIEW -->
+        <section id="view-download" class="view active">
+            <div class="header">
+                <h2>Medya İndir</h2>
+            </div>
+            
+            <div class="glass-panel download-box">
+                <div class="input-wrapper">
+                    <i class="fas fa-link"></i>
+                    <input type="text" id="url-input" placeholder="DiziBOX veya HDFilmCehennemi URL'si yapıştırın...">
+                    <!-- Smart Check Indicator -->
+                    <div id="url-indicator" class="url-indicator"><i class="fas fa-check-circle"></i></div>
                 </div>
-                <button id="btn-start-dl" class="glow-button"><i class="fas fa-magic"></i> Analiz Et ve Başlat</button>
-                <!-- Support Info -->
-                <div class="support-info">
-                    <span><i class="fas fa-check-circle"></i> Desteklenen Sayfalar:</span>
-                    <div class="support-tags">
-                        <span class="tag">Dizibox</span>
-                        <span class="tag">HDFilmCehennemi</span>
+                
+                <div class="controls-row">
+                    <div class="toggle-mode">
+                        <span id="label-single" class="active">Tek Bölüm/Film</span>
+                        <label class="switch">
+                            <input type="checkbox" id="mode-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <span id="label-season">Tüm Sezon</span>
+                    </div>
+                    <button id="btn-download" class="neon-button primary-accent">
+                        <i class="fas fa-download"></i> İndirmeyi Başlat
+                    </button>
+                </div>
+            </div>
+
+            <div class="header" style="margin-top: 2rem;">
+                <h2>İndirme Kuyruğu</h2>
+                <span class="badge" id="queue-count">0 Öğe</span>
+            </div>
+            
+            <div class="glass-panel" style="padding: 0;">
+                <div class="queue-list" id="queue-list">
+                    <!-- Queue items injected here -->
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>Kuyruk şu an boş.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Series View -->
-        <section id="view-series" class="view active">
+        <!-- SERIES VIEW -->
+        <section id="view-series" class="view">
             <div class="header">
                 <h2>İndirilen Diziler</h2>
-                <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
-                    <button class="glow-button btn-open-folder" style="padding: 10px 18px; font-size: 0.95rem; border-radius: 12px; height: 44px;"><i class="fas fa-folder-open"></i> Klasörü Aç</button>
-                    <div class="search-bar" style="margin: 0; height: 44px;">
+                <div class="header-actions">
+                    <button class="neon-button secondary-accent btn-open-folder">
+                        <i class="fas fa-folder-open"></i> Klasörü Aç
+                    </button>
+                    <div class="search-bar glass-input">
                         <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Dizilerde ara...">
+                        <input type="text" id="search-series" placeholder="Dizilerde ara...">
                     </div>
                 </div>
             </div>
-            <div id="series-grid" class="grid">
-                <!-- Series Cards will be injected here -->
-            </div>
+            <div id="series-grid" class="media-grid"></div>
         </section>
 
-        <!-- Movies View -->
+        <!-- MOVIES VIEW -->
         <section id="view-movies" class="view">
             <div class="header">
                 <h2>İndirilen Filmler</h2>
-                <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
-                    <button class="glow-button btn-open-folder" style="padding: 10px 18px; font-size: 0.95rem; border-radius: 12px; height: 44px;"><i class="fas fa-folder-open"></i> Klasörü Aç</button>
-                    <div class="search-bar" style="margin: 0; height: 44px;">
+                <div class="header-actions">
+                    <button class="neon-button secondary-accent btn-open-folder">
+                        <i class="fas fa-folder-open"></i> Klasörü Aç
+                    </button>
+                    <div class="search-bar glass-input">
                         <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Filmlerde ara...">
+                        <input type="text" id="search-movies" placeholder="Filmlerde ara...">
                     </div>
                 </div>
             </div>
-            <div id="movies-grid" class="grid">
-                <!-- Movie Cards will be injected here -->
-            </div>
+            <div id="movies-grid" class="media-grid"></div>
         </section>
 
-        <!-- Active Downloads View -->
-        <section id="view-downloads" class="view">
-            <div class="header">
-                <h2>Aktif İndirmeler</h2>
-            </div>
-            <div id="dl-list" class="download-list">
-                <!-- Active download cards will be injected here -->
-            </div>
-        </section>
-    </main>
+    </div>
 
-    <!-- Modal for Video Player -->
-    <div id="player-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <div class="player-container">
-                <video id="video-player" controls preload="auto"></video>
+    <!-- EPISODES MODAL -->
+    <div id="episodes-modal" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3 id="ep-show-name">Dizi Adı</h3>
+                <button class="close-btn close-modal-ep"><i class="fas fa-times"></i></button>
             </div>
-            <div class="player-info">
-                <h3 id="player-title">Bölüm Adı</h3>
-                <p id="player-subtitle">Dizi / Sezon</p>
+            <div class="episodes-list" id="episodes-list"></div>
+        </div>
+    </div>
+
+    <!-- CUSTOM VIDEO PLAYER MODAL -->
+    <div id="player-modal" class="modal-overlay player-overlay">
+        <div class="player-container">
+            <div class="player-header">
+                <div class="player-titles">
+                    <h2 id="player-title">Bölüm Adı</h2>
+                    <h4 id="player-subtitle">Dizi/Film</h4>
+                </div>
+                <button class="close-btn close-player"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <video id="custom-video" preload="metadata">
+                Tarayıcınız HTML5 video desteklemiyor.
+            </video>
+            
+            <div class="player-controls">
+                <div class="progress-container" id="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="controls-main">
+                    <div class="controls-left">
+                        <button id="play-pause-btn"><i class="fas fa-play"></i></button>
+                        <div class="volume-container">
+                            <button id="mute-btn"><i class="fas fa-volume-up"></i></button>
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1">
+                        </div>
+                        <span class="time-display mono-font"><span id="current-time">00:00</span> / <span id="duration">00:00</span></span>
+                    </div>
+                    <div class="controls-right">
+                        <button id="fullscreen-btn"><i class="fas fa-expand"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal for Episodes List -->
-    <div id="episodes-modal" class="modal">
-        <div class="modal-content glass">
-            <span class="close-modal-ep">&times;</span>
-            <div class="episodes-view">
-                <div class="episodes-header">
-                    <h2 id="ep-show-name">Dizi Adı</h2>
-                </div>
-                <div id="episodes-list" class="ep-grid">
-                    <!-- Episodes of selected show -->
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container"></div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="/static/script.js"></script>
 </body>
 </html>

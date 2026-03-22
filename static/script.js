@@ -1,390 +1,533 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const socket = io();
-    const views = document.querySelectorAll('.view');
-    const navItems = document.querySelectorAll('.nav-links li');
-    const seriesGrid = document.getElementById('series-grid');
-    const moviesGrid = document.getElementById('movies-grid');
-    const dlList = document.getElementById('dl-list');
-    const dlCountBadge = document.getElementById('dl-count');
+const socket = io();
+
+// ---------------------------
+// TOAST NOTIFICATION SYSTEM
+// ---------------------------
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
     
-    let activeDownloadsCount = 0;
-    const downloadCards = {};
+    let icon = 'fa-info-circle';
+    if (type === 'success') icon = 'fa-check-circle';
+    if (type === 'error') icon = 'fa-exclamation-circle';
+    
+    toast.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <div class="toast-message">${message}</div>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto dismiss after 4 seconds
+    setTimeout(() => {
+        toast.classList.add('closing');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
 
-    // --- VIEW NAVIGATION ---
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const viewId = 'view-' + item.getAttribute('data-view');
-            navItems.forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-            views.forEach(v => {
-                v.classList.remove('active');
-                if (v.id === viewId) v.classList.add('active');
-            });
-            if (viewId === 'view-series' || viewId === 'view-movies') loadLibrary();
-        });
+// ---------------------------
+// NAVIGATION
+// ---------------------------
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+        
+        const targetId = item.getAttribute('data-target');
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(targetId).classList.add('active');
     });
+});
 
-    // --- ADD DOWNLOAD ---
-    const btnStartDl = document.getElementById('btn-start-dl');
-    const dlUrlInput = document.getElementById('dl-url');
-    const modeButtons = document.querySelectorAll('.mode-switch button');
-    let currentMode = 'single';
+// ---------------------------
+// URL VALIDATION & SMART SWITCH
+// ---------------------------
+const urlInput = document.getElementById('url-input');
+const urlIndicator = document.getElementById('url-indicator');
+const modeToggle = document.getElementById('mode-toggle');
+const labelSingle = document.getElementById('label-single');
+const labelSeason = document.getElementById('label-season');
 
-    modeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            modeButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentMode = btn.getAttribute('data-mode');
+urlInput.addEventListener('input', (e) => {
+    const val = e.target.value.trim();
+    if (val.length === 0) {
+        urlIndicator.className = 'url-indicator';
+        urlIndicator.innerHTML = '<i class="fas fa-check-circle"></i>';
+        return;
+    }
+    
+    // Basic validation for supported domains
+    if (val.includes('dizibox') || val.includes('hdfilmcehennemi')) {
+        urlIndicator.className = 'url-indicator valid';
+        urlIndicator.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else {
+        urlIndicator.className = 'url-indicator invalid';
+        urlIndicator.innerHTML = '<i class="fas fa-times-circle"></i>';
+    }
+    
+    // Smart switch: If URL contains "-sezon-" or similar, suggest season mode
+    if (val.includes('-sezon-') || val.includes('season')) {
+        modeToggle.checked = true;
+        updateModeLabels();
+    }
+});
+
+modeToggle.addEventListener('change', updateModeLabels);
+
+function updateModeLabels() {
+    if (modeToggle.checked) {
+        labelSingle.classList.remove('active');
+        labelSeason.classList.add('active');
+    } else {
+        labelSeason.classList.remove('active');
+        labelSingle.classList.add('active');
+    }
+}
+
+// ---------------------------
+// DOWNLOAD LOGIC & QUEUE
+// ---------------------------
+const btnDownload = document.getElementById('btn-download');
+const queueList = document.getElementById('queue-list');
+const queueCount = document.getElementById('queue-count');
+
+let activeDownloads = {};
+
+btnDownload.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    if (!url) {
+        showToast("Lütfen bir URL girin.", "error");
+        return;
+    }
+
+    const mode = modeToggle.checked ? 'season' : 'single';
+    btnDownload.disabled = true;
+    btnDownload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+
+    try {
+        const response = await fetch('/api/add_download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, mode })
         });
-    });
-
-    btnStartDl.addEventListener('click', async () => {
-        const url = dlUrlInput.value.trim();
-        if (!url) return;
-
-        btnStartDl.disabled = true;
-        btnStartDl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analiz Ediliyor...';
-
-        try {
-            const response = await fetch('/api/add_download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, mode: currentMode })
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(`${data.downloads.length} öğe kuyruğa eklendi.`, "success");
+            urlInput.value = '';
+            urlIndicator.className = 'url-indicator';
+            
+            // Remove empty state if exists
+            const emptyState = queueList.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+            
+            data.downloads.forEach(dl => {
+                createQueueItem(dl);
+                activeDownloads[dl.id] = dl;
             });
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
+            updateQueueCount();
+        } else {
+            showToast(data.error || "İndirme başlatılamadı.", "error");
+        }
+    } catch (err) {
+        showToast("Sunucu ile bağlantı kurulamadı.", "error");
+    } finally {
+        btnDownload.disabled = false;
+        btnDownload.innerHTML = '<i class="fas fa-download"></i> İndirmeyi Başlat';
+    }
+});
 
-            dlUrlInput.value = '';
-            document.querySelector('[data-view="downloads"]').click();
-            data.downloads.forEach(dl => createDownloadCard(dl));
-        } catch (err) {
-            alert('Hata: ' + err.message);
-        } finally {
-            btnStartDl.disabled = false;
-            btnStartDl.innerHTML = '<i class="fas fa-magic"></i> Analiz Et ve Başlat';
+function createQueueItem(dl) {
+    const item = document.createElement('div');
+    item.className = 'queue-item';
+    item.id = `queue-${dl.id}`;
+    
+    item.innerHTML = `
+        <div class="queue-info">
+            <h4>${dl.info.show} - ${dl.info.season}.S ${dl.info.episode}.B</h4>
+            <p id="progress-text-${dl.id}">${dl.info.title || "Hazırlanıyor..."}</p>
+        </div>
+        <div class="status-badge status-${dl.status}" id="badge-${dl.id}">
+            ${dl.status === 'pending' ? 'BEKLİYOR' : dl.status.toUpperCase()}
+        </div>
+        <div class="shimmer-progress" id="progress-bar-${dl.id}"></div>
+    `;
+    queueList.prepend(item);
+}
+
+function updateQueueCount() {
+    const count = Object.keys(activeDownloads).length;
+    queueCount.textContent = `${count} Öğe`;
+}
+
+// Socket.io listeners
+socket.on('queue_update', (data) => {
+    const badge = document.getElementById(`badge-${data.id}`);
+    if (badge) {
+        badge.className = `status-badge status-${data.status}`;
+        let statusText = data.status === 'downloading' ? 'İNDİRİLİYOR' :
+                         data.status === 'completed' ? 'TAMAMLANDI' :
+                         data.status === 'error' ? 'HATA' : 'BEKLİYOR';
+        badge.textContent = statusText;
+        
+        if (data.status === 'completed') {
+            showToast("İndirme tamamlandı!", "success");
+            const pb = document.getElementById(`progress-bar-${data.id}`);
+            if(pb) { pb.style.width = '100%'; pb.style.background = 'var(--success)'; }
+        } else if (data.status === 'error') {
+            showToast("İndirme sırasında bir hata oluştu.", "error");
+            const pb = document.getElementById(`progress-bar-${data.id}`);
+            if(pb) { pb.style.width = '100%'; pb.style.background = 'var(--error)'; }
+        }
+    }
+});
+
+socket.on('download_progress', (data) => {
+    const pText = document.getElementById(`progress-text-${data.id}`);
+    const pBar = document.getElementById(`progress-bar-${data.id}`);
+    
+    if (pText && pBar) {
+        if (data.status === 'downloading') {
+            const percent = (data.downloaded_bytes / data.total_bytes) * 100 || 0;
+            pText.textContent = `%${percent.toFixed(1)} - ${formatBytes(data.speed)}/s`;
+            pBar.style.width = `${percent}%`;
+        }
+    }
+});
+
+function formatBytes(bytes, decimals = 2) {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024, dm = decimals < 0 ? 0 : decimals, sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+// ---------------------------
+// LIBRARY & LAZY LOADING
+// ---------------------------
+async function loadLibrary() {
+    try {
+        const res = await fetch('/api/library');
+        const data = await res.json();
+        
+        renderSeries(data.series);
+        renderMovies(data.movies);
+    } catch (err) {
+        showToast("Kütüphane yüklenemedi.", "error");
+    }
+}
+
+// Intersection Observer for Lazy Loading Images
+const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            img.src = img.dataset.src;
+            img.onload = () => img.classList.add('loaded');
+            observer.unobserve(img);
         }
     });
+}, { rootMargin: "50px" });
 
-    // --- DOWNLOAD CARDS ---
-    function createDownloadCard(dl) {
-        if (downloadCards[dl.id]) return;
+function renderSeries(seriesList) {
+    const grid = document.getElementById('series-grid');
+    grid.innerHTML = '';
+    
+    seriesList.forEach(show => {
         const card = document.createElement('div');
-        card.className = 'dl-card';
-        card.id = `dl-${dl.id}`;
+        card.className = 'media-card';
+        
+        let posterHTML = '';
+        if (show.poster) {
+            posterHTML = `<img data-src="${show.poster}" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" alt="${show.name}">`;
+        } else {
+            const letter = show.name.charAt(0).toUpperCase();
+            posterHTML = `<div class="avatar-placeholder">${letter}</div>`;
+        }
+        
         card.innerHTML = `
-            <div class="dl-icon"><i class="fas fa-cloud-download-alt"></i></div>
-            <div class="dl-main">
-                <div class="dl-info">
-                    <h4>${dl.info.show} - S${dl.info.season}E${dl.info.episode}</h4>
-                    <span class="dl-status">Bekliyor...</span>
-                </div>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
-                <div class="dl-meta">
-                    <span class="dl-percent">0%</span>
-                    <span class="dl-speed">-- MB/s</span>
-                    <span class="dl-eta">Kalan: --:--</span>
-                    <span class="dl-size">-- / --</span>
+            <div class="poster-wrapper">
+                ${posterHTML}
+                <div class="card-overlay">
+                    <button class="overlay-btn play-btn" title="Bölümleri Gör"><i class="fas fa-play"></i></button>
+                    <button class="overlay-btn vlc-btn" title="Klasörde Aç"><i class="fas fa-folder"></i></button>
                 </div>
             </div>
+            <div class="card-info">
+                <h3>${show.name}</h3>
+                <p>${show.source} • ${show.episodes.length} Bölüm</p>
+            </div>
         `;
-        dlList.appendChild(card);
-        downloadCards[dl.id] = card;
-        activeDownloadsCount++;
-        updateDlBadge();
-        applyBufferedMessages(dl.id);
-    }
-
-    function updateDlBadge() {
-        dlCountBadge.textContent = activeDownloadsCount;
-        dlCountBadge.style.display = activeDownloadsCount > 0 ? 'block' : 'none';
-    }
-
-    const socketBuffer = {};
-
-    function applyBufferedMessages(id) {
-        if (socketBuffer[id]) {
-            socketBuffer[id].forEach(data => {
-                if (data.type === 'progress') handleProgress(data);
-                else if (data.type === 'queue') handleQueue(data);
-            });
-            delete socketBuffer[id];
-        }
-    }
-
-    // --- SOCKET.IO EVENTS ---
-    socket.on('download_progress', (data) => {
-        data.type = 'progress';
-        const card = downloadCards[data.id];
-        if (!card) {
-            if (!socketBuffer[data.id]) socketBuffer[data.id] = [];
-            socketBuffer[data.id].push(data);
-            return;
-        }
-        handleProgress(data);
-    });
-
-    socket.on('queue_update', (data) => {
-        data.type = 'queue';
-        const card = downloadCards[data.id];
-        if (!card) {
-            if (!socketBuffer[data.id]) socketBuffer[data.id] = [];
-            socketBuffer[data.id].push(data);
-            return;
-        }
-        handleQueue(data);
-    });
-
-    function handleProgress(data) {
-        const card = downloadCards[data.id];
-        const fill = card.querySelector('.progress-fill');
-        const percent = card.querySelector('.dl-percent');
-        const speed = card.querySelector('.dl-speed');
-        const eta = card.querySelector('.dl-eta');
-        const status = card.querySelector('.dl-status');
-        const meta = card.querySelector('.dl-size');
-
-        if (data.status === 'downloading') {
-            const p = parseFloat(data.progress);
-            if (p > 0) {
-                fill.style.width = p + '%';
-                percent.textContent = p + '%';
-                fill.classList.remove('pulse');
-            } else {
-                fill.style.width = '100%';
-                fill.classList.add('pulse');
-                percent.textContent = 'İndiriliyor...';
-            }
-            speed.textContent = data.speed;
-            eta.textContent = 'Kalan: ' + data.eta;
-            status.textContent = 'İndiriliyor...';
-            meta.textContent = `${data.downloaded} / ${data.total}`;
-        } else if (data.status === 'finished' || data.status === 'already_exists') {
-            fill.classList.remove('pulse');
-            fill.style.width = '100%';
-            percent.textContent = '100%';
-            status.textContent = data.status === 'finished' ? 'Tamamlandı' : 'Zaten Mevcut';
-            status.style.color = '#2ecc71';
-            setTimeout(() => {
-                activeDownloadsCount = Math.max(0, activeDownloadsCount - 1);
-                updateDlBadge();
-                loadLibrary();
-            }, 2000);
-        } else if (data.status === 'error') {
-            status.textContent = 'Hata!';
-            status.style.color = '#ff4757';
-        }
-    }
-
-    function handleQueue(data) {
-        const card = downloadCards[data.id];
-        const status = card.querySelector('.dl-status');
-        const fill = card.querySelector('.progress-fill');
         
-        if (data.status === 'downloading') {
-            status.textContent = 'İşleniyor...';
-            status.style.color = 'var(--accent)';
-        } else if (data.status === 'completed') {
-            status.textContent = 'Tamamlandı';
-            status.style.color = '#2ecc71';
-            fill.style.width = '100%';
-            setTimeout(() => {
-                loadLibrary();
-            }, 2000);
-        } else if (data.status === 'error') {
-            status.textContent = 'Hata!';
-            status.style.color = '#ff4757';
-        }
-    }
-
-    // --- VLC ICON SVG (Premium Realistic Cone) ---
-    const vlcIconSvg = `<svg class="vlc-icon-svg" viewBox="0 0 512 512" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
-        <path fill="#e67e22" d="M464 448H352.4L281.8 86.6c-3.5-17.8-19.1-30.6-37.2-30.6h-1.3c-18.1 0-33.7 12.8-37.2 30.6L135.5 448H48c-8.8 0-16 7.2-16 16v16c0 8.8 7.2 16 16 16h416c8.8 0 16-7.2 16-16v-16c0-8.8-7.2-16-16-16z"/>
-        <path fill="#fff" d="M155.2 416l25.6-128h152l25.6 128H155.2z"/>
-        <path fill="#fff" d="M211.8 224h88.4l12.8-64h-114l12.8 64z"/>
-    </svg>`;
-
-    // --- VLC INTEGRATION ---
-    async function watchInVlc(path) {
-        if (!path) return;
-        try {
-            const response = await fetch('/api/watch_vlc', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: path })
-            });
-            const result = await response.json();
-            if (!result.success) alert("VLC başlatılamadı: " + result.error);
-        } catch (error) {
-            console.error("VLC hatası:", error);
-        }
-    }
-
-    // --- LIBRARY LOGIC ---
-    async function loadLibrary() {
-        try {
-            const res = await fetch('/api/library');
-            const data = await res.json();
-            renderSeries(data.series || []);
-            renderMovies(data.movies || []);
-        } catch (err) { console.error('Library Load Error:', err); }
-    }
-
-    function renderSeries(shows) {
-        if (!seriesGrid) return;
-        seriesGrid.innerHTML = '';
-        if (shows.length === 0) {
-            seriesGrid.innerHTML = '<div class="empty-state">Henüz dizi indirilmemiş.</div>';
-            return;
-        }
-
-        shows.forEach(show => {
-            const card = document.createElement('div');
-            card.className = 'lib-card';
-            card.innerHTML = `
-                <div class="lib-poster">
-                    <img src="${show.poster || '/static/placeholder.jpg'}" alt="${show.name}">
-                    <div class="lib-source-badge">${show.source || 'Dizibox'}</div>
-                    <div class="lib-overlay">
-                        <button class="lib-play" title="Bölümleri Gör"><i class="fas fa-play"></i></button>
-                        <button class="lib-vlc" title="VLC'de İzle">${vlcIconSvg}</button>
-                    </div>
-                </div>
-                <div class="lib-info">
-                    <h3>${show.name}</h3>
-                    <p>${show.episodes ? show.episodes.length : 0} Bölüm</p>
-                </div>
-            `;
-            
-            card.querySelector('.lib-vlc').onclick = (e) => {
-                e.stopPropagation();
-                if (show.episodes && show.episodes.length > 0) {
-                    watchInVlc(show.episodes[0].path);
-                } else {
-                    alert("Bu dizi için oynatılabilir bölüm bulunamadı.");
-                }
-            };
-            
-            card.addEventListener('click', () => openShowEpisodes(show));
-            seriesGrid.appendChild(card);
-        });
-    }
-
-    function renderMovies(movies) {
-        if (!moviesGrid) return;
-        moviesGrid.innerHTML = '';
-        if (movies.length === 0) {
-            moviesGrid.innerHTML = '<div class="empty-state">Henüz film indirilmemiş.</div>';
-            return;
-        }
-
-        movies.forEach(movie => {
-            const card = document.createElement('div');
-            card.className = 'lib-card';
-            card.innerHTML = `
-                <div class="lib-poster">
-                    <img src="${movie.poster || '/static/placeholder.jpg'}" alt="${movie.name}">
-                    <div class="lib-source-badge">${movie.source || 'HDFilmCehennemi'}</div>
-                    <div class="lib-overlay">
-                        <button class="lib-play" title="Hemen İzle"><i class="fas fa-play"></i></button>
-                        <button class="lib-vlc" title="VLC'de İzle">${vlcIconSvg}</button>
-                    </div>
-                </div>
-                <div class="lib-info">
-                    <h3>${movie.name}</h3>
-                    <p>Film</p>
-                </div>
-            `;
-            
-            card.querySelector('.lib-vlc').onclick = (e) => {
-                e.stopPropagation();
-                watchInVlc(movie.path);
-            };
-            
-            card.addEventListener('click', () => {
-                playVideo(movie.url, movie.name, 'Film');
-            });
-            moviesGrid.appendChild(card);
-        });
-    }
-
-    // --- EPISODES MODAL ---
-    const epModal = document.getElementById('episodes-modal');
-    const epShowName = document.getElementById('ep-show-name');
-    const epList = document.getElementById('episodes-list');
-    const closeEpModal = document.querySelector('.close-modal-ep');
-
-    function openShowEpisodes(show) {
-        epShowName.textContent = show.name;
-        epList.innerHTML = '';
-        show.episodes.forEach((ep, index) => {
-            const row = document.createElement('div');
-            row.className = 'ep-row';
-            row.innerHTML = `
-                <div class="ep-num">${index + 1}</div>
-                <div class="ep-name">${ep.name.replace('.mp4', '')}</div>
-                <div class="ep-actions">
-                    <div class="ep-vlc" title="VLC'de İzle">${vlcIconSvg}</div>
-                    <div class="ep-play" title="İzle"><i class="fas fa-play"></i></div>
-                </div>
-            `;
-            
-            // Fix row click - make it more specific
-            row.querySelector('.ep-play').onclick = () => {
-                epModal.classList.remove('active');
-                playVideo(ep.url, ep.name, show.name);
-            };
-            
-            row.querySelector('.ep-vlc').onclick = (e) => {
-                e.stopPropagation();
-                watchInVlc(ep.path);
-            };
-
-            epList.appendChild(row);
-        });
-        epModal.classList.add('active');
-    }
-
-    closeEpModal.onclick = () => epModal.classList.remove('active');
-
-    // --- VIDEO PLAYER MODAL ---
-    const playerModal = document.getElementById('player-modal');
-    const videoPlayer = document.getElementById('video-player');
-    const playerTitle = document.getElementById('player-title');
-    const playerSubtitle = document.getElementById('player-subtitle');
-    const closeModal = document.querySelector('.close-modal');
-
-    function playVideo(url, title, subtitle) {
-        videoPlayer.src = url;
-        playerTitle.textContent = title.replace('.mp4', '');
-        playerSubtitle.textContent = subtitle;
-        playerModal.classList.add('active');
-        videoPlayer.play();
-    }
-
-    closeModal.onclick = () => {
-        playerModal.classList.remove('active');
-        videoPlayer.pause();
-        videoPlayer.src = '';
-    };
-
-    window.onclick = (e) => {
-        if (e.target === playerModal) closeModal.onclick();
-        if (e.target === epModal) epModal.classList.remove('active');
-    };
-
-    // Open Folder Logic
-    const openFolderBtns = document.querySelectorAll('.btn-open-folder');
-    openFolderBtns.forEach(btn => {
-        btn.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/api/open_downloads', { method: 'POST' });
-                const result = await response.json();
-                if (result.error) alert('Klasör açılamadı: ' + result.error);
-            } catch (err) {
-                console.error("Klasör açma hatası:", err);
-            }
-        });
+        const img = card.querySelector('img');
+        if (img) imageObserver.observe(img);
+        
+        card.querySelector('.play-btn').onclick = (e) => {
+            e.stopPropagation();
+            openShowEpisodes(show);
+        };
+        
+        card.querySelector('.vlc-btn').onclick = async (e) => {
+            e.stopPropagation();
+            await fetch('/api/open_downloads', {method: 'POST'});
+        };
+        
+        grid.appendChild(card);
     });
+}
 
-    loadLibrary();
+function renderMovies(movieList) {
+    const grid = document.getElementById('movies-grid');
+    grid.innerHTML = '';
+    
+    movieList.forEach(movie => {
+        const card = document.createElement('div');
+        card.className = 'media-card';
+        
+        let posterHTML = '';
+        if (movie.poster) {
+            posterHTML = `<img data-src="${movie.poster}" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" alt="${movie.name}">`;
+        } else {
+            const letter = movie.name.charAt(0).toUpperCase();
+            posterHTML = `<div class="avatar-placeholder">${letter}</div>`;
+        }
+        
+        card.innerHTML = `
+            <div class="poster-wrapper">
+                ${posterHTML}
+                <div class="card-overlay">
+                    <button class="overlay-btn play-btn" title="İzle"><i class="fas fa-play"></i></button>
+                    <button class="overlay-btn vlc-btn" title="VLC'de İzle"><i class="fas fa-traffic-cone"></i></button>
+                </div>
+            </div>
+            <div class="card-info">
+                <h3>${movie.name}</h3>
+                <p>Film • ${movie.source}</p>
+            </div>
+        `;
+        
+        const img = card.querySelector('img');
+        if (img) imageObserver.observe(img);
+        
+        card.querySelector('.play-btn').onclick = (e) => {
+            e.stopPropagation();
+            openPlayer(movie.url, movie.name, "Film");
+        };
+        
+        card.querySelector('.vlc-btn').onclick = async (e) => {
+            e.stopPropagation();
+            try {
+                const res = await fetch('/api/watch_vlc', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({path: movie.path})
+                });
+                const data = await res.json();
+                if(data.error) showToast(data.error, "error");
+            } catch(e) {
+                showToast("VLC açılamadı.", "error");
+            }
+        };
+        
+        grid.appendChild(card);
+    });
+}
+
+// ---------------------------
+// EPISODES MODAL
+// ---------------------------
+const epModal = document.getElementById('episodes-modal');
+const epList = document.getElementById('episodes-list');
+
+function openShowEpisodes(show) {
+    document.getElementById('ep-show-name').textContent = show.name;
+    epList.innerHTML = '';
+    
+    show.episodes.forEach((ep, i) => {
+        const row = document.createElement('div');
+        row.className = 'ep-row';
+        row.innerHTML = `
+            <div class="ep-num">${i + 1}</div>
+            <div class="ep-name">${ep.name}</div>
+            <div class="ep-actions">
+                <div class="ep-action-btn vlc" title="VLC'de İzle"><i class="fas fa-traffic-cone"></i></div>
+                <div class="ep-action-btn play" title="İzle"><i class="fas fa-play"></i></div>
+            </div>
+        `;
+        
+        row.querySelector('.play').onclick = () => {
+            epModal.classList.remove('active');
+            openPlayer(ep.url, ep.name, show.name);
+        };
+        
+        row.querySelector('.vlc').onclick = async () => {
+            try {
+                const res = await fetch('/api/watch_vlc', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({path: ep.path})
+                });
+                const data = await res.json();
+                if(data.error) showToast(data.error, "error");
+            } catch(e) {
+                showToast("VLC açılamadı.", "error");
+            }
+        };
+        
+        epList.appendChild(row);
+    });
+    
+    epModal.classList.add('active');
+}
+
+document.querySelector('.close-modal-ep').onclick = () => epModal.classList.remove('active');
+
+// ---------------------------
+// CUSTOM VIDEO PLAYER
+// ---------------------------
+const playerModal = document.getElementById('player-modal');
+const videoElement = document.getElementById('custom-video');
+const playPauseBtn = document.getElementById('play-pause-btn');
+const muteBtn = document.getElementById('mute-btn');
+const volumeSlider = document.getElementById('volume-slider');
+const progressContainer = document.getElementById('progress-container');
+const progressBar = document.getElementById('progress-bar');
+const currentTimeEl = document.getElementById('current-time');
+const durationEl = document.getElementById('duration');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+const playerContainer = document.querySelector('.player-container');
+
+function openPlayer(url, title, subtitle) {
+    document.getElementById('player-title').textContent = title;
+    document.getElementById('player-subtitle').textContent = subtitle;
+    videoElement.src = url;
+    playerModal.classList.add('active');
+    
+    videoElement.play().catch(e => {
+        showToast("Otomatik oynatma tarayıcı tarafından engellendi.", "info");
+        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    });
+}
+
+function closePlayer() {
+    playerModal.classList.remove('active');
+    videoElement.pause();
+    videoElement.src = '';
+    // if fullscreen, exit it
+    if(document.fullscreenElement) document.exitFullscreen();
+}
+
+document.querySelector('.close-player').onclick = closePlayer;
+
+// Video controls logic
+playPauseBtn.onclick = togglePlay;
+videoElement.onclick = togglePlay;
+
+function togglePlay() {
+    if (videoElement.paused) {
+        videoElement.play();
+        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    } else {
+        videoElement.pause();
+        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    }
+}
+
+videoElement.addEventListener('timeupdate', () => {
+    const percent = (videoElement.currentTime / videoElement.duration) * 100 || 0;
+    progressBar.style.width = `${percent}%`;
+    currentTimeEl.textContent = formatTime(videoElement.currentTime);
 });
+
+videoElement.addEventListener('loadedmetadata', () => {
+    durationEl.textContent = formatTime(videoElement.duration);
+});
+
+progressContainer.addEventListener('click', (e) => {
+    const rect = progressContainer.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    videoElement.currentTime = pos * videoElement.duration;
+});
+
+muteBtn.onclick = () => {
+    videoElement.muted = !videoElement.muted;
+    muteBtn.innerHTML = videoElement.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+    volumeSlider.value = videoElement.muted ? 0 : videoElement.volume;
+};
+
+volumeSlider.addEventListener('input', (e) => {
+    videoElement.volume = e.target.value;
+    videoElement.muted = e.target.value == 0;
+    muteBtn.innerHTML = videoElement.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+});
+
+fullscreenBtn.onclick = () => {
+    if (!document.fullscreenElement) {
+        playerContainer.requestFullscreen().catch(err => {
+            showToast("Tam ekran desteklenmiyor", "error");
+        });
+    } else {
+        document.exitFullscreen();
+    }
+};
+
+function formatTime(seconds) {
+    if(isNaN(seconds)) return "00:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+// Keybindings
+document.addEventListener('keydown', (e) => {
+    if (!playerModal.classList.contains('active')) return;
+    
+    switch(e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+            e.preventDefault();
+            togglePlay();
+            break;
+        case 'f':
+            e.preventDefault();
+            fullscreenBtn.click();
+            break;
+        case 'm':
+            e.preventDefault();
+            muteBtn.click();
+            break;
+        case 'arrowright':
+            e.preventDefault();
+            videoElement.currentTime = Math.min(videoElement.duration, videoElement.currentTime + 10);
+            break;
+        case 'arrowleft':
+            e.preventDefault();
+            videoElement.currentTime = Math.max(0, videoElement.currentTime - 10);
+            break;
+        case 'escape':
+            if (!document.fullscreenElement) closePlayer();
+            break;
+    }
+});
+
+// Windows open folder
+document.querySelectorAll('.btn-open-folder').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/api/open_downloads', {method: 'POST'});
+            const data = await res.json();
+            if(data.error) showToast(data.error, "error");
+        } catch(e) {
+            showToast("Klasör açılamadı", "error");
+        }
+    });
+});
+
+// Modal dismiss by clicking outside
+window.onclick = (e) => {
+    if (e.target === playerModal) closePlayer();
+    if (e.target === epModal) epModal.classList.remove('active');
+};
