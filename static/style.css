@@ -136,6 +136,7 @@ body {
     font-weight: 800;
     background: linear-gradient(to right, #fff, var(--text-muted));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -761,6 +762,7 @@ video {
     width: 80px;
     height: 4px;
     -webkit-appearance: none;
+    appearance: none;
     background: rgba(255,255,255,0.2);
     border-radius: 2px;
     outline: none;

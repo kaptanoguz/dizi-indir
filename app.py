@@ -44,5 +44,5 @@ def serve_video(filename):
     return send_from_directory(Config.BASE_DOWNLOADS, filename)
 
 if __name__ == '__main__':
-    logging.info("Starting DiziBOX Platform on port 5005")
+    logging.info("Starting CipherDrop on port 5005")
     socketio.run(app, host='0.0.0.0', port=5005, debug=False)
